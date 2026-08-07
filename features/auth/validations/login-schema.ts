@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { EMAIL_OTP_LENGTH } from "@/features/auth/constants/auth";
+
 export const loginSchema = z.object({
   email: z
     .string()
@@ -17,7 +19,10 @@ export const otpSchema = z.object({
   token: z
     .string()
     .trim()
-    .regex(/^\d{6}$/, "Enter the 6-digit verification code"),
+    .regex(
+      new RegExp(`^\\d{${EMAIL_OTP_LENGTH}}$`),
+      `Enter the ${EMAIL_OTP_LENGTH}-digit verification code`
+    ),
 });
 
 export const otpTokenSchema = otpSchema.pick({ token: true });

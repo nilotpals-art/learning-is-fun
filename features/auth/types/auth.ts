@@ -14,8 +14,13 @@ export interface AuthProfile {
   id: string;
   userId: string | null;
   email: string | null;
+  name: string;
   role: string | null;
   isActive: boolean;
+  instituteId: string | null;
+  instituteName: string | null;
+  instituteShortName: string | null;
+  instituteLogoUrl: string | null;
 }
 
 export type OtpRequestResult =

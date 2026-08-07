@@ -19,9 +19,15 @@ interface ProfileRecord {
   id: string;
   user_id: string | null;
   email: string | null;
+  name: string;
   role: string | null;
   is_active: boolean | null;
+  institute_id: string | null;
   role_record: { name: string } | Array<{ name: string }> | null;
+  institute_record:
+    | { name: string; short_name: string | null; logo_url: string | null }
+    | Array<{ name: string; short_name: string | null; logo_url: string | null }>
+    | null;
 }
 
 function getRelatedRole(
@@ -35,12 +41,21 @@ function getRelatedRole(
 }
 
 function toAuthProfile(record: ProfileRecord): AuthProfile {
+  const institute = Array.isArray(record.institute_record)
+    ? record.institute_record[0] ?? null
+    : record.institute_record;
+
   return {
     id: record.id,
     userId: record.user_id,
     email: record.email,
+    name: record.name,
     role: record.role ?? getRelatedRole(record.role_record),
     isActive: record.is_active === true,
+    instituteId: record.institute_id,
+    instituteName: institute?.name ?? null,
+    instituteShortName: institute?.short_name ?? null,
+    instituteLogoUrl: institute?.logo_url ?? null,
   };
 }
 
@@ -83,7 +98,7 @@ export async function getCurrentProfile(): Promise<AuthProfile | null> {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, user_id, email, role, is_active, role_record:roles(name)"
+      "id, user_id, email, name, role, is_active, institute_id, role_record:roles(name), institute_record:institutes(name, short_name, logo_url)"
     )
     .or(`id.eq.${user.id},user_id.eq.${user.id}`)
     .limit(1)

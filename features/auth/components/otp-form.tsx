@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EMAIL_OTP_LENGTH } from "@/features/auth/constants/auth";
 import {
   clearPendingOtp,
   resendOtp,
@@ -77,8 +78,9 @@ export function OtpForm() {
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
-          maxLength={6}
-          placeholder="000000"
+          minLength={EMAIL_OTP_LENGTH}
+          maxLength={EMAIL_OTP_LENGTH}
+          placeholder={"0".repeat(EMAIL_OTP_LENGTH)}
           className="text-center text-lg tracking-[0.4em]"
           aria-invalid={Boolean(errors.token)}
           aria-describedby={errors.token ? "token-error" : undefined}

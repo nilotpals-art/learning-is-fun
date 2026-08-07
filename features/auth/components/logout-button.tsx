@@ -6,8 +6,19 @@ import { LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { logout } from "@/features/auth/actions/auth-actions";
+import { cn } from "@/lib/utils";
 
-export function LogoutButton() {
+interface LogoutButtonProps {
+  className?: string;
+  label?: string;
+  variant?: "default" | "outline" | "secondary" | "ghost" | "destructive" | "link";
+}
+
+export function LogoutButton({
+  className,
+  label = "Sign out",
+  variant = "outline",
+}: LogoutButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -20,9 +31,15 @@ export function LogoutButton() {
   }
 
   return (
-    <Button type="button" variant="outline" onClick={handleLogout} disabled={isPending}>
+    <Button
+      type="button"
+      variant={variant}
+      className={cn(className)}
+      onClick={handleLogout}
+      disabled={isPending}
+    >
       <LogOut aria-hidden="true" />
-      {isPending ? "Signing out…" : "Sign out"}
+      {isPending ? "Signing out…" : label}
     </Button>
   );
 }

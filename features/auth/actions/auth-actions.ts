@@ -12,6 +12,7 @@ import type {
   AuthActionResult,
   OtpRequestResult,
 } from "@/features/auth/types/auth";
+import { EMAIL_OTP_LENGTH } from "@/features/auth/constants/auth";
 import {
   loginSchema,
   otpTokenSchema,
@@ -122,7 +123,7 @@ export async function verifyOtp(input: unknown): Promise<AuthActionResult> {
   if (!parsed.success) {
     return {
       status: "invalid",
-      message: "Enter the 6-digit verification code.",
+      message: `Enter the ${EMAIL_OTP_LENGTH}-digit verification code.`,
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
