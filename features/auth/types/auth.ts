@@ -1,0 +1,30 @@
+export const SUPPORTED_ROLES = [
+  "admin",
+  "Super Admin",
+  "Institute Admin",
+  "Student",
+  "Parent",
+  "Staff",
+  "Teacher",
+] as const;
+
+export type SupportedRole = (typeof SUPPORTED_ROLES)[number];
+
+export interface AuthProfile {
+  id: string;
+  userId: string | null;
+  email: string | null;
+  role: string | null;
+  isActive: boolean;
+}
+
+export type OtpRequestResult =
+  | { status: "otp_sent"; message: string }
+  | { status: "unauthorized"; message: string }
+  | { status: "inactive"; message: string }
+  | { status: "error"; message: string; fieldErrors?: Record<string, string[]> };
+
+export type AuthActionResult =
+  | { status: "invalid"; message: string; fieldErrors?: Record<string, string[]> }
+  | { status: "error"; message: string }
+  | { status: "redirect"; destination: string };

@@ -12,8 +12,14 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll() {
-          // Middleware handles cookie updates
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Server Components cannot write cookies. The proxy refreshes them.
+          }
         },
       },
     }
