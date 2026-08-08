@@ -1,13 +1,14 @@
 import { z } from "zod";
 
 import { EMAIL_OTP_LENGTH } from "@/features/auth/constants/auth";
+import { normalizeEmail } from "@/lib/validation/normalization";
 
 export const loginSchema = z.object({
   email: z
     .string()
     .trim()
     .email("Please enter a valid email address")
-    .transform((email) => email.toLowerCase()),
+    .transform(normalizeEmail),
 });
 
 export const otpSchema = z.object({
@@ -15,10 +16,9 @@ export const otpSchema = z.object({
     .string()
     .trim()
     .email("Please enter a valid email address")
-    .transform((email) => email.toLowerCase()),
+    .transform(normalizeEmail),
   token: z
     .string()
-    .trim()
     .regex(
       new RegExp(`^\\d{${EMAIL_OTP_LENGTH}}$`),
       `Enter the ${EMAIL_OTP_LENGTH}-digit verification code`

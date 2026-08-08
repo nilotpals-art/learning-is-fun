@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -236,21 +237,7 @@ export function SchoolBoardsManager({ boards }: { boards: SchoolBoard[] }) {
   return (
     <div className="space-y-6">
       <Toaster />
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-primary">Masters</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            School Boards
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Manage education boards available within your institute.
-          </p>
-        </div>
-        <Button size="lg" onClick={openCreate}>
-          <Plus />
-          Add School Board
-        </Button>
-      </div>
+      <PageHeader title="School Boards" description="Manage education boards available within your institute." icon={School} theme="school-boards" eyebrow="Masters" action={<Button size="lg" onClick={openCreate}><Plus />Add School Board</Button>} />
 
       <div className="max-w-md">
         <StatCard

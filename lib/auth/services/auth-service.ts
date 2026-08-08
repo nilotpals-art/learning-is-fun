@@ -3,6 +3,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeEmail } from "@/lib/validation/normalization";
 import type { AuthProfile, SupportedRole } from "@/features/auth/types/auth";
 
 const ROLE_DESTINATIONS: Readonly<Record<SupportedRole, string>> = {
@@ -74,7 +75,7 @@ export async function findAuthorizedProfileByEmail(
   const { data, error } = await supabase
     .from("profiles")
     .select("id, is_active")
-    .eq("email", email)
+    .eq("email", normalizeEmail(email))
     .maybeSingle();
 
   if (error || !data) {

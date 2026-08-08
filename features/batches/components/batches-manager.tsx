@@ -17,6 +17,7 @@ import { useForm } from "react-hook-form";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -307,10 +308,7 @@ export function BatchesManager({ batches, options }: { batches: Batch[]; options
     <>
       <Toaster />
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="text-sm font-medium text-primary">Masters</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Batches</h1><p className="mt-2 text-sm text-muted-foreground">Manage teaching batches within your institute.</p></div>
-          <Button onClick={openCreate}><Plus />Add Batch</Button>
-        </div>
+        <PageHeader title="Batches" description="Manage teaching batches within your institute." icon={Users} theme="batches" eyebrow="Masters" action={<Button onClick={openCreate}><Plus />Add Batch</Button>} />
 
         <div className="grid gap-4 md:grid-cols-2">
           <StatCard title="Total Batches" value={batches.length.toString()} description="Teaching batches created" icon={Users} tone="blue" />

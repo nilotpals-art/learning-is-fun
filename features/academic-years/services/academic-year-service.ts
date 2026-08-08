@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { AcademicYear } from "@/features/academic-years/types/academic-year";
 import type { AcademicYearFormValues } from "@/features/academic-years/validations/academic-year-schema";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 interface AcademicYearRecord {
   id: string;
@@ -69,7 +70,7 @@ export async function insertAcademicYear(
   const supabase = await createClient();
   const { error } = await supabase.from("academic_years").insert({
     institute_id: instituteId,
-    name: values.name,
+    name: normalizeUpperText(values.name),
     start_date: values.startDate,
     end_date: values.endDate,
     is_active: values.isActive,
@@ -87,7 +88,7 @@ export async function updateAcademicYearRecord(
   const { data, error } = await supabase
     .from("academic_years")
     .update({
-      name: values.name,
+      name: normalizeUpperText(values.name),
       start_date: values.startDate,
       end_date: values.endDate,
       is_active: values.isActive,

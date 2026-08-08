@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 const dateSchema = z
   .string()
@@ -11,7 +12,7 @@ const dateSchema = z
 
 export const academicYearSchema = z
   .object({
-    name: z.string().trim().min(1, "Academic Year Name is required."),
+    name: z.string().trim().min(1, "Academic Year Name is required.").transform(normalizeUpperText),
     startDate: dateSchema,
     endDate: dateSchema,
     isActive: z.boolean(),

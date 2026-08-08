@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 export const FEE_HEAD_CATEGORIES = [
   "Academic",
@@ -10,14 +11,14 @@ export const FEE_HEAD_CATEGORIES = [
 
 export const feeHeadSchema = z
   .object({
-    name: z.string().trim().min(1, "Fee Head Name is required."),
+    name: z.string().trim().min(1, "Fee Head Name is required.").transform(normalizeUpperText),
     code: z
       .string()
       .trim()
       .min(1, "Fee Head Code is required.")
-      .transform((value) => value.toUpperCase()),
+      .transform(normalizeUpperText),
     categoryChoice: z.enum(FEE_HEAD_CATEGORIES),
-    customCategory: z.string().trim(),
+    customCategory: z.string().trim().transform(normalizeUpperText),
     displayOrder: z
       .string()
       .trim()

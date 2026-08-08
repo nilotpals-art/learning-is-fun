@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,7 +81,7 @@ export function PaymentModesManager({ paymentModes }: { paymentModes: PaymentMod
     <>
       <Toaster />
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-medium text-primary">Masters</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Payment Modes</h1><p className="mt-2 text-sm text-muted-foreground">Manage payment methods accepted by your institute.</p></div><Button size="lg" onClick={openCreate}><Plus />Add Payment Mode</Button></div>
+        <PageHeader title="Payment Modes" description="Manage payment methods accepted by your institute." icon={CircleDollarSign} theme="payment-modes" eyebrow="Masters" action={<Button size="lg" onClick={openCreate}><Plus />Add Payment Mode</Button>} />
         <div className="grid gap-4 md:grid-cols-3"><StatCard title="Total Payment Modes" value={paymentModes.length.toString()} description="Accepted payment methods" icon={CircleDollarSign} tone="blue" /><StatCard title="Active Payment Modes" value={activeCount.toString()} description="Available for future transactions" icon={ToggleLeft} tone="emerald" /><StatCard title="Inactive Payment Modes" value={(paymentModes.length - activeCount).toString()} description="Unavailable for new transactions" icon={ToggleLeft} tone="amber" /></div>
         <Card><CardContent className="space-y-5 p-4 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" /><Input aria-label="Search Payment Modes" placeholder="Search by Payment Mode Name…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" /></div><select aria-label="Filter by Status" className={selectClassName} value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)}><option value="all">All Statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>

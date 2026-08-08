@@ -10,6 +10,7 @@ import {
   getFeeHeadCategory,
   type FeeHeadFormValues,
 } from "@/features/fee-heads/validations/fee-head-schema";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 interface FeeHeadRecord {
   id: string;
@@ -42,16 +43,16 @@ function toFeeHead(record: FeeHeadRecord, assignedIds = new Set<string>()): FeeH
 }
 
 function normalizeName(value: string): string {
-  return value.trim().toLocaleLowerCase();
+  return normalizeUpperText(value);
 }
 
 function normalizeCode(value: string): string {
-  return value.trim().toUpperCase();
+  return normalizeUpperText(value);
 }
 
 function toPayload(values: FeeHeadFormValues) {
   return {
-    name: values.name,
+    name: normalizeUpperText(values.name),
     code: normalizeCode(values.code),
     category: getFeeHeadCategory(values),
     display_order: Number(values.displayOrder),
@@ -154,8 +155,8 @@ export async function insertRecommendedFeeHeads(
   const { error } = await supabase.from("fee_heads").insert(
     records.map((item) => ({
       institute_id: instituteId,
-      name: item.name,
-      code: item.code,
+      name: normalizeUpperText(item.name),
+      code: normalizeUpperText(item.code),
       category: item.category,
       display_order: item.displayOrder,
       is_active: item.isActive,

@@ -39,7 +39,7 @@ export default async function ComingSoonPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
-          <Button render={<Link href="/dashboard" />}>Return to Dashboard</Button>
+          <Button nativeButton={false} render={<Link href="/dashboard" />}>Return to Dashboard</Button>
         </CardContent>
       </Card>
     </div>

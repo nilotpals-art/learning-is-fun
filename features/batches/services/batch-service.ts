@@ -6,6 +6,7 @@ import type {
   BatchFormOptions,
 } from "@/features/batches/types/batch";
 import type { BatchFormValues } from "@/features/batches/validations/batch-schema";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 interface RelatedName {
   name: string;
@@ -78,12 +79,12 @@ function toPayload(values: BatchFormValues) {
     board_id: nullable(values.boardId),
     class_id: nullable(values.classId),
     subject_id: nullable(values.subjectId),
-    name: values.name,
+    name: normalizeUpperText(values.name),
     start_time: nullable(values.startTime),
     end_time: nullable(values.endTime),
-    days: nullable(values.days),
+    days: nullable(normalizeUpperText(values.days)),
     capacity: values.capacity === "" ? null : Number(values.capacity),
-    room: nullable(values.room),
+    room: nullable(normalizeUpperText(values.room)),
     is_active: values.isActive,
   };
 }
@@ -148,9 +149,9 @@ export async function batchNameExists(
   if (excludedId) query = query.neq("id", excludedId);
   const { data, error } = await query;
   if (error) throw error;
-  const normalized = name.trim().toLocaleLowerCase();
+  const normalized = normalizeUpperText(name);
   return (data ?? []).some(
-    (item) => (item.name as string).trim().toLocaleLowerCase() === normalized
+    (item) => normalizeUpperText(item.name as string) === normalized
   );
 }
 
@@ -212,13 +213,13 @@ export async function updateBatchRecord(
 
 export async function batchHasStudentReferences(id: string): Promise<boolean> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("student_batches")
-    .select("id")
-    .eq("batch_id", id)
-    .limit(1);
+  const [legacy, assignments] = await Promise.all([
+    supabase.from("student_batches").select("id").eq("batch_id", id).limit(1),
+    supabase.from("student_assignments").select("id").eq("batch_id", id).limit(1),
+  ]);
+  const error = legacy.error ?? assignments.error;
   if (error) throw error;
-  return (data?.length ?? 0) > 0;
+  return (legacy.data?.length ?? 0) > 0 || (assignments.data?.length ?? 0) > 0;
 }
 
 export async function deleteBatchRecord(

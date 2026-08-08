@@ -25,8 +25,8 @@ export function PaymentModesSetup({ state }: { state: PaymentModeSetupState }) {
   }
 
   return (
-    <Card className="border-primary/25 bg-primary/5">
-      <CardHeader>
+    <Card className="overflow-hidden border-teal-200 bg-gradient-to-br from-teal-50/90 via-card to-cyan-50/70">
+      <CardHeader className="border-b border-teal-100">
         <CardTitle>Recommended Payment Modes setup</CardTitle>
         <p className="text-sm text-muted-foreground">
           Create only the missing standard payment methods. Existing custom modes remain unchanged.
@@ -35,7 +35,7 @@ export function PaymentModesSetup({ state }: { state: PaymentModeSetupState }) {
       <CardContent className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {state.items.map((item) => (
-            <div key={item.name} className="flex items-center justify-between gap-3 rounded-2xl border bg-background p-4">
+            <div key={item.name} className="flex items-center justify-between gap-3 rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
               <span className="font-medium">{item.name}</span>
               <Badge variant={item.exists ? "secondary" : "outline"}>{item.exists ? "Already exists" : "Will be created"}</Badge>
             </div>
