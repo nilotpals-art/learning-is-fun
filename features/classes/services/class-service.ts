@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { AcademicClass } from "@/features/classes/types/academic-class";
 import type { ClassFormValues } from "@/features/classes/validations/class-schema";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 interface AcademicClassRecord {
   id: string;
@@ -21,7 +22,7 @@ function toAcademicClass(record: AcademicClassRecord): AcademicClass {
 }
 
 function normalizeClassName(name: string): string {
-  return name.trim().toLocaleLowerCase();
+  return normalizeUpperText(name);
 }
 
 function toDisplayOrder(value: string): number | null {
@@ -89,7 +90,7 @@ export async function insertAcademicClass(
   const supabase = await createClient();
   const { error } = await supabase.from("academic_classes").insert({
     institute_id: instituteId,
-    class_name: values.className,
+    class_name: normalizeUpperText(values.className),
     display_order: toDisplayOrder(values.displayOrder),
   });
 
@@ -105,7 +106,7 @@ export async function updateAcademicClassRecord(
   const { data, error } = await supabase
     .from("academic_classes")
     .update({
-      class_name: values.className,
+      class_name: normalizeUpperText(values.className),
       display_order: toDisplayOrder(values.displayOrder),
     })
     .eq("institute_id", instituteId)

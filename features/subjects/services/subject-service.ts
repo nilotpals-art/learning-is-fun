@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Subject } from "@/features/subjects/types/subject";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 interface SubjectRecord {
   id: string;
@@ -18,7 +19,7 @@ function toSubject(record: SubjectRecord): Subject {
 }
 
 function normalizeSubjectName(name: string): string {
-  return name.trim().toLocaleLowerCase();
+  return normalizeUpperText(name);
 }
 
 export async function listSubjects(instituteId: string): Promise<Subject[]> {
@@ -79,7 +80,7 @@ export async function insertSubject(
   const supabase = await createClient();
   const { error } = await supabase.from("subjects").insert({
     institute_id: instituteId,
-    subject_name: subjectName,
+    subject_name: normalizeUpperText(subjectName),
   });
 
   if (error) throw error;
@@ -93,7 +94,7 @@ export async function updateSubjectRecord(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("subjects")
-    .update({ subject_name: subjectName })
+    .update({ subject_name: normalizeUpperText(subjectName) })
     .eq("institute_id", instituteId)
     .eq("id", id)
     .select("id")

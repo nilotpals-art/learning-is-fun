@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, GraduationCap } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, GraduationCap } from "lucide-react";
 
 import { NavigationIcon } from "@/components/layout/navigation-icon";
 import { Badge } from "@/components/ui/badge";
@@ -71,16 +72,18 @@ export function AppSidebar({
   onNavigate,
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   return (
-    <aside className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
+    <aside className="flex h-full min-h-0 flex-col bg-gradient-to-b from-indigo-950 via-violet-950 to-slate-950 text-sidebar-foreground shadow-2xl shadow-indigo-950/20">
+      <div className="flex min-h-20 items-center gap-3 border-b border-white/10 px-4 py-3">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-white shadow-inner ring-1 ring-white/15">
           <GraduationCap className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="truncate font-semibold">{instituteName}</p>
-          <p className="text-xs text-sidebar-foreground/60">ERP Portal</p>
+          <p className="truncate text-base font-extrabold tracking-tight">Learning Is Fun</p>
+          <p className="truncate text-[0.6875rem] font-medium text-indigo-100/65">English Remedial Classes</p>
+          <p className="truncate text-[0.625rem] text-indigo-100/45">{instituteName}</p>
         </div>
       </div>
 
@@ -100,25 +103,18 @@ export function AppSidebar({
             }
 
             if (item.children.length > 0) {
+              const childActive = item.children.some(
+                (child) => pathname === child.href || pathname.startsWith(`${child.href}/`)
+              );
+              const expanded = childActive || expandedGroups[item.title] === true;
               return (
                 <li key={item.title} className="pt-2">
-                  <div className="flex items-center gap-3 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50">
-                    <NavigationIcon name={item.icon} className="size-4" />
+                  <button type="button" aria-expanded={expanded} onClick={() => setExpandedGroups((current) => ({ ...current, [item.title]: !expanded }))} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring", childActive ? "bg-white/10 text-white" : "text-indigo-100/75 hover:bg-white/8 hover:text-white")}>
+                    <NavigationIcon name={item.icon} className="size-4.5" />
                     <span className="flex-1">{item.title}</span>
-                    <ChevronRight className="size-3.5" aria-hidden="true" />
-                  </div>
-                  <ul className="space-y-1">
-                    {item.children.map((child) => (
-                      <li key={child.href}>
-                        <NavigationLink
-                          item={child}
-                          pathname={pathname}
-                          nested
-                          onNavigate={onNavigate}
-                        />
-                      </li>
-                    ))}
-                  </ul>
+                    {expanded ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
+                  </button>
+                  <div className={cn("grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none", expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}><ul className="min-h-0 space-y-1 overflow-hidden pt-1">{item.children.map((child) => <li key={child.href}><NavigationLink item={child} pathname={pathname} nested onNavigate={onNavigate} /></li>)}</ul></div>
                 </li>
               );
             }

@@ -58,7 +58,7 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-indigo-100/80 bg-white/85 px-4 shadow-sm backdrop-blur-xl sm:px-6">
       <MobileNavigation
         instituteName={instituteName}
         items={navigationItems}

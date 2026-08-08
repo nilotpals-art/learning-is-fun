@@ -17,6 +17,7 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -252,10 +253,7 @@ export function FeeHeadsManager({ feeHeads }: { feeHeads: FeeHead[] }) {
     <>
       <Toaster />
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="text-sm font-medium text-primary">Masters</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Fee Heads</h1><p className="mt-2 text-sm text-muted-foreground">Manage fee categories used by your institute.</p></div>
-          <Button size="lg" onClick={openCreate}><Plus />Add Fee Head</Button>
-        </div>
+        <PageHeader title="Fee Heads" description="Manage fee categories used by your institute." icon={CircleDollarSign} theme="fee-heads" eyebrow="Masters" action={<Button size="lg" onClick={openCreate}><Plus />Add Fee Head</Button>} />
 
         <div className="grid gap-4 md:grid-cols-3">
           <StatCard title="Total Fee Heads" value={feeHeads.length.toString()} description="Reusable fee categories" icon={CircleDollarSign} tone="blue" />

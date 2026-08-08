@@ -25,8 +25,8 @@ export function FeeHeadsSetup({ state }: { state: FeeHeadSetupState }) {
   }
 
   return (
-    <Card className="border-primary/25 bg-primary/5">
-      <CardHeader>
+    <Card className="overflow-hidden border-emerald-200 bg-gradient-to-br from-emerald-50/90 via-card to-teal-50/70">
+      <CardHeader className="border-b border-emerald-100">
         <CardTitle>Recommended Fee Heads setup</CardTitle>
         <p className="text-sm text-muted-foreground">
           Review the institute&apos;s recommended Fee Heads, then create only the missing records.
@@ -36,7 +36,7 @@ export function FeeHeadsSetup({ state }: { state: FeeHeadSetupState }) {
       <CardContent className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {state.items.map((item) => (
-            <div key={item.code} className="rounded-2xl border bg-background p-4">
+            <div key={item.code} className="rounded-2xl border border-emerald-100 bg-white/80 p-4 shadow-sm">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium">{item.name}</p>
                 <Badge variant={item.status === "existing" ? "secondary" : item.status === "conflict" ? "destructive" : "outline"}>

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import type { SchoolBoard } from "@/features/school-boards/types/school-board";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 interface SchoolBoardRecord {
   id: string;
@@ -18,7 +19,7 @@ function toSchoolBoard(record: SchoolBoardRecord): SchoolBoard {
 }
 
 function normalizeBoardName(name: string): string {
-  return name.trim().toLocaleLowerCase();
+  return normalizeUpperText(name);
 }
 
 export async function listSchoolBoards(
@@ -80,7 +81,7 @@ export async function insertSchoolBoard(
   const supabase = await createClient();
   const { error } = await supabase.from("boards").insert({
     institute_id: instituteId,
-    name,
+    name: normalizeUpperText(name),
   });
   if (error) throw error;
 }
@@ -93,7 +94,7 @@ export async function updateSchoolBoardRecord(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("boards")
-    .update({ name })
+    .update({ name: normalizeUpperText(name) })
     .eq("institute_id", instituteId)
     .eq("id", id)
     .select("id")

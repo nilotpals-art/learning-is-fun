@@ -7,6 +7,7 @@ import {
   type PaymentModeSetupState,
 } from "@/features/payment-modes/types/payment-mode";
 import type { PaymentModeFormValues } from "@/features/payment-modes/validations/payment-mode-schema";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 interface PaymentModeRecord {
   id: string;
@@ -17,7 +18,7 @@ interface PaymentModeRecord {
 }
 
 function normalizeName(name: string): string {
-  return name.trim().toLocaleLowerCase();
+  return normalizeUpperText(name);
 }
 
 function toPaymentMode(record: PaymentModeRecord): PaymentMode {
@@ -99,7 +100,7 @@ export async function insertRecommendedPaymentModes(
   if (missing.length === 0) return 0;
   const supabase = await createClient();
   const { error } = await supabase.from("payment_modes").insert(
-    missing.map((item) => ({ institute_id: instituteId, name: item.name, is_active: true }))
+    missing.map((item) => ({ institute_id: instituteId, name: normalizeUpperText(item.name), is_active: true }))
   );
   if (error) throw error;
   return missing.length;
@@ -112,7 +113,7 @@ export async function insertPaymentMode(
   const supabase = await createClient();
   const { error } = await supabase.from("payment_modes").insert({
     institute_id: instituteId,
-    name: values.name,
+    name: normalizeUpperText(values.name),
     is_active: values.isActive,
   });
   if (error) throw error;
@@ -126,7 +127,7 @@ export async function updatePaymentModeRecord(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payment_modes")
-    .update({ name: values.name, is_active: values.isActive, updated_at: new Date().toISOString() })
+    .update({ name: normalizeUpperText(values.name), is_active: values.isActive, updated_at: new Date().toISOString() })
     .eq("institute_id", instituteId)
     .eq("id", id)
     .select("id")

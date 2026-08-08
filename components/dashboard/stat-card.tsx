@@ -31,14 +31,14 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "relative overflow-hidden bg-card text-card-foreground shadow-sm transition-[box-shadow,transform] duration-200 before:absolute before:inset-y-0 before:left-0 before:w-1 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-md motion-reduce:hover:translate-y-0",
+        "relative overflow-hidden bg-gradient-to-br from-card to-muted/35 text-card-foreground shadow-sm transition-[box-shadow,transform] duration-200 before:absolute before:inset-y-0 before:left-0 before:w-1.5 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-lg motion-reduce:hover:translate-y-0",
         toneBorders[tone]
       )}
     >
       <CardContent className="flex items-start justify-between gap-4 p-5">
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
+          <p className="mt-2 text-3xl font-extrabold tracking-tight">{value}</p>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
           {status ? (
             <p className="mt-3 text-xs font-medium text-foreground/70">{status}</p>
@@ -46,7 +46,7 @@ export function StatCard({
         </div>
         <span
           className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-2xl",
+            "flex size-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ring-1 ring-current/10",
             toneStyles[tone]
           )}
         >

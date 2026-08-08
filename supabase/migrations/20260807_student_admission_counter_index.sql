@@ -1,0 +1,2 @@
+CREATE INDEX student_admission_counters_academic_year_id_idx
+ON public.student_admission_counters(academic_year_id);

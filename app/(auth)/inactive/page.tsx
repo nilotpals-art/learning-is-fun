@@ -12,7 +12,7 @@ export default function InactivePage() {
       title="Account inactive"
       description="This account is inactive. Contact an administrator to restore access."
     >
-      <Button className="w-full" render={<Link href="/login" />}>
+      <Button nativeButton={false} className="w-full" render={<Link href="/login" />}>
         Return to sign in
       </Button>
     </AuthCard>

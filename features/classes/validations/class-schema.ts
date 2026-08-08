@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { normalizeUpperText } from "@/lib/validation/normalization";
 
 export const classSchema = z.object({
-  className: z.string().trim().min(1, "Class Name is required."),
+  className: z.string().trim().min(1, "Class Name is required.").transform(normalizeUpperText),
   displayOrder: z
     .string()
     .trim()

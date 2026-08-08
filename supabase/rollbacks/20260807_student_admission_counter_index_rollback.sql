@@ -1,0 +1,1 @@
+DROP INDEX public.student_admission_counters_academic_year_id_idx;

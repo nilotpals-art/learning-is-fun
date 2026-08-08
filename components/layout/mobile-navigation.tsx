@@ -33,7 +33,7 @@ export function MobileNavigation({
       >
         <Menu aria-hidden="true" />
       </SheetTrigger>
-      <SheetContent side="left" className="w-[min(22rem,88vw)] p-0" showCloseButton={false}>
+      <SheetContent side="left" className="w-[min(22rem,88vw)] border-0 p-0" showCloseButton={false}>
         <SheetTitle className="sr-only">Application navigation</SheetTitle>
         <SheetDescription className="sr-only">
           Navigate between Learning Is Fun ERP modules.

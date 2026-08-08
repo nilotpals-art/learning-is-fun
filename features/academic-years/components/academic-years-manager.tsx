@@ -18,6 +18,7 @@ import { useForm } from "react-hook-form";
 
 import { StatCard } from "@/components/dashboard/stat-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -255,14 +256,7 @@ export function AcademicYearsManager({ years }: { years: AcademicYear[] }) {
   return (
     <div className="space-y-6">
       <Toaster />
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-primary">Masters</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Academic Years</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Manage academic sessions and select the Current Academic Year.</p>
-        </div>
-        <Button size="lg" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus />Add Academic Year</Button>
-      </div>
+      <PageHeader title="Academic Years" description="Manage academic sessions and select the Current Academic Year." icon={CalendarDays} theme="academic-years" eyebrow="Masters" action={<Button size="lg" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus />Add Academic Year</Button>} />
 
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard title="Current Academic Year" value={currentYear?.name ?? "Not set"} description={currentYear ? `${formatDate(currentYear.startDate)} – ${formatDate(currentYear.endDate)}` : "Select an Active Academic Year"} icon={CalendarCheck} tone="violet" />
