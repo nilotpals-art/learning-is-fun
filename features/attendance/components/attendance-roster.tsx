@@ -1,0 +1,26 @@
+"use client";
+
+import { Pencil } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ATTENDANCE_STATUSES, type AttendanceRosterEntry, type AttendanceStatus } from "@/features/attendance/types/attendance";
+import { cn } from "@/lib/utils";
+
+const statusClasses: Record<AttendanceStatus, string> = {
+  Present: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200",
+  Absent: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200",
+  Late: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200",
+  Leave: "border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
+};
+
+function StatusControl({ entry, disabled, onChange }: { entry: AttendanceRosterEntry; disabled: boolean; onChange: (status: AttendanceStatus) => void }) {
+  if (disabled) return <Badge className={statusClasses[entry.status]}>{entry.status}</Badge>;
+  return <fieldset><legend className="sr-only">Attendance for {entry.studentName}</legend><div className="flex flex-wrap gap-1.5">{ATTENDANCE_STATUSES.map((status) => <button key={status} type="button" aria-pressed={entry.status === status} onClick={() => onChange(status)} className={cn("min-h-9 rounded-full border px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40", entry.status === status ? statusClasses[status] : "border-border bg-card text-muted-foreground hover:bg-muted")}>{status}</button>)}</div></fieldset>;
+}
+
+export function AttendanceRoster({ entries, editable, onEntryChange, onEdit }: { entries: AttendanceRosterEntry[]; editable: boolean; onEntryChange: (assignmentId: string, patch: Partial<Pick<AttendanceRosterEntry, "status" | "remarks">>) => void; onEdit: (entry: AttendanceRosterEntry) => void }) {
+  return <><div className="hidden lg:block"><Table><TableHeader><TableRow><TableHead>Admission No.</TableHead><TableHead>Student Name</TableHead><TableHead>Attendance</TableHead><TableHead>Remarks</TableHead>{!editable ? <TableHead className="text-right">Actions</TableHead> : null}</TableRow></TableHeader><TableBody>{entries.map((entry) => <TableRow key={entry.assignmentId}><TableCell className="font-medium">{entry.admissionNumber}</TableCell><TableCell><p className="font-semibold">{entry.studentName}</p>{entry.updatedAt ? <p className="text-xs text-muted-foreground">Updated {new Date(entry.updatedAt).toLocaleString("en-IN")}{entry.markedByName ? ` by ${entry.markedByName}` : ""}</p> : null}</TableCell><TableCell><StatusControl entry={entry} disabled={!editable} onChange={(status) => onEntryChange(entry.assignmentId, { status })} /></TableCell><TableCell>{editable ? <Input aria-label={`Remarks for ${entry.studentName}`} value={entry.remarks} maxLength={250} onChange={(event) => onEntryChange(entry.assignmentId, { remarks: event.target.value.toUpperCase() })} placeholder="Optional remarks" /> : entry.remarks || <span className="text-muted-foreground">Not provided</span>}</TableCell>{!editable ? <TableCell className="text-right">{entry.attendanceId ? <Button variant="outline" size="sm" onClick={() => onEdit(entry)}><Pencil />Edit</Button> : <Badge variant="destructive">Missing</Badge>}</TableCell> : null}</TableRow>)}</TableBody></Table></div><div className="grid gap-3 lg:hidden">{entries.map((entry) => <article key={entry.assignmentId} className="rounded-2xl border bg-card p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="font-bold">{entry.studentName}</p><p className="text-xs text-muted-foreground">{entry.admissionNumber}</p></div>{!editable && entry.attendanceId ? <Button variant="outline" size="sm" onClick={() => onEdit(entry)}><Pencil />Edit</Button> : null}</div><div className="mt-4"><StatusControl entry={entry} disabled={!editable} onChange={(status) => onEntryChange(entry.assignmentId, { status })} /></div><div className="mt-4"><label htmlFor={`remarks-${entry.assignmentId}`} className="text-xs font-medium text-muted-foreground">Remarks</label>{editable ? <Input id={`remarks-${entry.assignmentId}`} className="mt-1" value={entry.remarks} maxLength={250} onChange={(event) => onEntryChange(entry.assignmentId, { remarks: event.target.value.toUpperCase() })} placeholder="Optional remarks" /> : <p className="mt-1 text-sm">{entry.remarks || "Not provided"}</p>}</div>{entry.updatedAt ? <p className="mt-3 text-xs text-muted-foreground">Updated {new Date(entry.updatedAt).toLocaleString("en-IN")}{entry.markedByName ? ` by ${entry.markedByName}` : ""}</p> : null}{!editable && !entry.attendanceId ? <Badge variant="destructive" className="mt-3">Attendance missing</Badge> : null}</article>)}</div></>;
+}
