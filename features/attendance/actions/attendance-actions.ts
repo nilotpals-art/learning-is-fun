@@ -72,6 +72,8 @@ export async function editAttendance(input: unknown): Promise<AttendanceActionRe
   try {
     await updateStudentAttendance(parsed.data);
     revalidatePath("/attendance");
+    revalidatePath("/attendance/history");
+    revalidatePath("/attendance/reports");
     return { status: "success", message: "Attendance updated successfully." };
   } catch (error) {
     return { status: "error", message: databaseMessage(error, "We could not update Attendance. Please try again.") };

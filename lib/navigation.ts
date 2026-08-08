@@ -185,9 +185,27 @@ export const navigation: readonly NavigationItem[] = [
     badge: null,
     children: [
       {
-        title: "Attendance",
+        title: "Daily Attendance",
         href: "/attendance",
         icon: "attendance",
+        roles: DASHBOARD_ROLES,
+        enabled: true,
+        badge: null,
+        children: [],
+      },
+      {
+        title: "Attendance History",
+        href: "/attendance/history",
+        icon: "calendar",
+        roles: DASHBOARD_ROLES,
+        enabled: true,
+        badge: null,
+        children: [],
+      },
+      {
+        title: "Attendance Reports",
+        href: "/attendance/reports",
+        icon: "reports",
         roles: DASHBOARD_ROLES,
         enabled: true,
         badge: null,

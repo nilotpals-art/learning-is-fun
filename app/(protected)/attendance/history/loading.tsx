@@ -1,0 +1,2 @@
+import { Card, CardContent } from "@/components/ui/card";
+export default function AttendanceHistoryLoading() { return <div className="space-y-6" aria-label="Loading Attendance History"><div className="h-32 animate-pulse rounded-3xl bg-muted" /><Card><CardContent className="grid gap-4 p-6 sm:grid-cols-4">{[1,2,3,4].map((x) => <div key={x} className="h-16 animate-pulse rounded-xl bg-muted" />)}</CardContent></Card><div className="h-80 animate-pulse rounded-2xl bg-muted" /></div>; }
