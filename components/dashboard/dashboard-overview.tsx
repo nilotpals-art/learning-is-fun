@@ -11,6 +11,7 @@ import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { AnnouncementHighlight } from "@/components/dashboard/announcement-highlight";
 import { AttendanceVisual } from "@/components/dashboard/attendance-visual";
+import { ModuleStatus } from "@/components/dashboard/module-status";
 import { UpcomingPanel } from "@/components/dashboard/upcoming-panel";
 import type { DashboardStat } from "@/features/dashboard/types/dashboard";
 
@@ -26,18 +27,18 @@ const stats: readonly DashboardStat[] = [
   {
     title: "Today’s Attendance",
     value: "—",
-    description: "Available with the Attendance module",
+    description: "Attendance module currently in progress",
     icon: CalendarCheck,
     tone: "emerald",
-    status: "No attendance data yet",
+    status: "Attendance workflow is being completed",
   },
   {
-    title: "Homework Due",
+    title: "Practice Work",
     value: "—",
-    description: "Available with the Homework module",
+    description: "Available with the Practice Work module",
     icon: ClipboardList,
     tone: "amber",
-    status: "No deadlines available",
+    status: "Planned after Learning Planner",
   },
   {
     title: "Upcoming Exams",
@@ -45,7 +46,7 @@ const stats: readonly DashboardStat[] = [
     description: "Available with the Examinations module",
     icon: NotebookTabs,
     tone: "violet",
-    status: "Nothing scheduled",
+    status: "Planned after Practice Work",
   },
   {
     title: "Pending Fees",
@@ -68,6 +69,8 @@ export function DashboardOverview() {
           ))}
         </div>
       </section>
+
+      <ModuleStatus />
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]" aria-label="Dashboard actions and schedule">
         <QuickActions />
