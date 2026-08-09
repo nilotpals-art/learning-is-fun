@@ -1,0 +1,4 @@
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import type { ScheduleChange } from "@/features/learning-planner/types/learning-planner";
+export function HistoryList({ changes }: { changes: ScheduleChange[] }) { if (!changes.length) return <Card><CardContent className="p-8 text-center text-muted-foreground">No Schedule changes have been recorded.</CardContent></Card>; return <div className="space-y-3">{changes.map((change) => <Card key={change.id}><CardContent className="flex flex-col gap-2 p-5 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-semibold">{change.eventTitle}</p><p className="text-sm text-muted-foreground">{change.reason ?? "No reason provided"}</p><p className="mt-1 text-xs text-muted-foreground">Changed by {change.changedByName} · {new Date(change.changedAt).toLocaleString()}</p></div><Badge>{change.changeType}</Badge></CardContent></Card>)}</div>; }

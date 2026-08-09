@@ -19,6 +19,7 @@ export type NavigationIconName =
   | "book-open"
   | "academics"
   | "attendance"
+  | "planner"
   | "homework"
   | "exams"
   | "marks"
@@ -216,6 +217,50 @@ export const navigation: readonly NavigationItem[] = [
       futureItem("Marks", "/marks", "marks"),
       futureItem("Report Cards", "/report-cards", "report-card"),
     ],
+  },
+  {
+    title: "Learning Planner",
+    href: "/learning-planner",
+    icon: "planner",
+    roles: DASHBOARD_ROLES,
+    enabled: true,
+    badge: null,
+    children: [
+      { title: "Overview", href: "/learning-planner", icon: "dashboard", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Calendar", href: "/learning-planner/calendar", icon: "calendar", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Class Schedule", href: "/learning-planner/schedules", icon: "planner", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Events", href: "/learning-planner/events", icon: "planner", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Notifications", href: "/learning-planner/notifications", icon: "communication", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Schedule History", href: "/learning-planner/history", icon: "reports", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+    ],
+  },
+  {
+    title: "Practice Work",
+    href: "/practice-work",
+    icon: "homework",
+    roles: DASHBOARD_ROLES,
+    enabled: true,
+    badge: null,
+    children: [
+      { title: "Overview", href: "/practice-work", icon: "dashboard", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Question Bank", href: "/practice-work/question-bank", icon: "book-open", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Generate Questions", href: "/practice-work/question-bank/generate", icon: "homework", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Question Templates", href: "/practice-work/templates", icon: "academics", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Generation History", href: "/practice-work/generations", icon: "reports", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Practice Sets", href: "/practice-work/sets", icon: "report-card", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Assignments", href: "/practice-work/assignments", icon: "users", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Student Attempts", href: "/practice-work/attempts", icon: "marks", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+      { title: "Analytics", href: "/practice-work/analytics", icon: "reports", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
+    ],
+  },
+  {
+    title: "My Practice Work",
+    href: "/practice-work/my-work",
+    icon: "homework",
+    roles: ["Student"],
+    enabled: true,
+    badge: null,
+    children: [],
   },
   {
     title: "Finance",

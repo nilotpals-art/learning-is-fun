@@ -1,0 +1,1 @@
+export default function Loading(){return <div className="animate-pulse space-y-5" aria-label="Loading Practice Work"><div className="h-10 w-64 rounded-xl bg-muted"/><div className="h-28 w-full rounded-2xl bg-muted"/><div className="h-64 w-full rounded-2xl bg-muted"/></div>}

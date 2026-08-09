@@ -1,0 +1,25 @@
+export const QUESTION_TYPES = ["mcq", "fill_blank", "true_false", "sentence_correction", "rearrange_words", "short_answer", "reading_comprehension"] as const;
+export const DIFFICULTIES = ["beginner", "intermediate", "advanced"] as const;
+export const PRACTICE_SKILLS = ["grammar", "vocabulary", "reading", "writing", "spelling", "comprehension", "sentence_formation", "revision"] as const;
+export type QuestionType = (typeof QUESTION_TYPES)[number];
+export type Difficulty = (typeof DIFFICULTIES)[number];
+export type PracticeSkill = (typeof PRACTICE_SKILLS)[number];
+export type MarksMode = "same_for_all" | "custom" | "ai_suggested";
+export type AnswerMode = "after_each_question" | "after_completion";
+
+export interface PracticeOption { id: string; label: string }
+export interface PracticeOptions { boards: PracticeOption[]; classes: PracticeOption[]; academicYears: PracticeOption[]; batches: PracticeOption[]; students: PracticeOption[]; events: PracticeOption[] }
+export interface QuestionTemplate { id: string; name: string; questionType: QuestionType; instructions: string; promptRules: string; supportsOptions: boolean; requiresExplanation: boolean; isActive: boolean }
+export interface BankQuestion { id: string; boardId: string | null; classId: string | null; bookName: string | null; chapter: string | null; skill: string | null; topic: string | null; subtopic: string | null; templateId: string | null; questionType: QuestionType; questionText: string; options: string[] | null; correctAnswer: string | boolean | string[]; acceptedAnswers: string[] | null; answerExplanation: string | null; difficulty: Difficulty; suggestedMarks: number | null; sourceType: "manual" | "ai"; isActive: boolean }
+export interface GeneratedQuestion { id: string; questionType: QuestionType; questionText: string; options: string[] | null; correctAnswer: string | boolean | string[]; acceptedAnswers: string[] | null; explanation: string; difficulty: Difficulty; suggestedMarks: number; tags: string[]; reviewStatus: "pending" | "approved" | "rejected"; duplicateWarning: boolean }
+export interface AiGeneration { id: string; templateId: string; bookName: string | null; chapter: string | null; customInstruction: string | null; model: string; status: "pending" | "completed" | "failed" | "reviewed"; requestedCount: number; generatedCount: number; approvedCount: number; rejectedCount: number; createdAt: string }
+export interface PracticeSetQuestion { id: string; questionBankId: string | null; questionType: QuestionType; questionText: string; options: string[] | null; difficulty: Difficulty; marks: number; displayOrder: number }
+export interface PracticeSet { id: string; academicYearId: string; title: string; description: string | null; answerMode: AnswerMode; allowRetry: boolean; maxAttempts: number | null; marksMode: MarksMode; defaultMarks: number | null; targetTotalMarks: number | null; status: "draft" | "published" | "closed" | "archived"; questionCount: number; totalMarks: number; questions: PracticeSetQuestion[] }
+export interface PracticeAssignment { id: string; practiceSetId: string; practiceSetTitle: string; studentId: string; studentName: string; status: "assigned" | "in_progress" | "completed" | "closed"; dueAt: string | null; assignedAt: string }
+export interface PracticeAttemptSummary { id: string; practiceSetTitle: string; studentName: string; attemptNo: number; status: "in_progress" | "submitted" | "reviewed"; scoreObtained: number | null; maxMarks: number | null; percentage: number | null; startedAt: string; submittedAt: string | null }
+export interface PracticeAnalytics { totalQuestions: number; totalSets: number; publishedSets: number; totalAssignments: number; completedAssignments: number; averagePercentage: number | null }
+export interface AttemptQuestion { id: string; questionType: QuestionType; questionText: string; options: string[] | null; marks: number; displayOrder: number }
+export interface AttemptSession { attemptId: string; attemptNo: number; title?: string; answerMode?: AnswerMode; questions: AttemptQuestion[] }
+export interface AttemptReview { questionId: string; questionText: string; studentAnswer: unknown; correctAnswer: unknown; explanation: string | null; isCorrect: boolean; marksAwarded: number; maxMarks: number }
+export interface SubmitAttemptResult { scoreObtained: number; maxMarks: number; percentage: number; review: AttemptReview[] }
+export type PracticeActionResult<T = undefined> = { status: "success"; message: string; data?: T } | { status: "error"; message: string; fieldErrors?: Record<string, string[] | undefined> };

@@ -1,0 +1,2 @@
+import type { ReactNode } from "react";
+export function PracticeShell({title,description,children}:{title:string;description:string;children:ReactNode}){return <div className="space-y-6"><header><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">Practice Work</p><h1 className="mt-1 text-3xl font-bold tracking-tight">{title}</h1><p className="mt-2 text-muted-foreground">{description}</p></header>{children}</div>}

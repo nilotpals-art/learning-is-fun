@@ -92,7 +92,7 @@ export function AppSidebar({
           {items.map((item) => {
             if (item.title === "Logout") {
               return (
-                <li key={item.title} className="pt-2">
+                <li key={item.href} className="pt-2">
                   <LogoutButton
                     label="Logout"
                     variant="ghost"
@@ -108,7 +108,7 @@ export function AppSidebar({
               );
               const expanded = childActive || expandedGroups[item.title] === true;
               return (
-                <li key={item.title} className="pt-2">
+                <li key={item.href} className="pt-2">
                   <button type="button" aria-expanded={expanded} onClick={() => setExpandedGroups((current) => ({ ...current, [item.title]: !expanded }))} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring", childActive ? "bg-white/10 text-white" : "text-indigo-100/75 hover:bg-white/8 hover:text-white")}>
                     <NavigationIcon name={item.icon} className="size-4.5" />
                     <span className="flex-1">{item.title}</span>

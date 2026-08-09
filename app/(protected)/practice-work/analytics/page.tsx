@@ -1,0 +1,6 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PracticeShell } from "@/features/practice-work/components/practice-shell";
+import { getPracticeAnalytics } from "@/features/practice-work/services/practice-work-service";
+import { requireRole } from "@/lib/auth/services/auth-service";
+import { DASHBOARD_ROLES } from "@/lib/navigation";
+export default async function AnalyticsPage(){const profile=await requireRole(DASHBOARD_ROLES),value=await getPracticeAnalytics(profile);const cards=[{label:"Question Bank",value:value.totalQuestions},{label:"Published Sets",value:value.publishedSets},{label:"Completed Assignments",value:value.completedAssignments},{label:"Average Score",value:value.averagePercentage===null?"Not available":`${value.averagePercentage.toFixed(1)}%`}];return <PracticeShell title="Practice Analytics" description="A Version 1 institute-level view of Practice Work adoption and outcomes."><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(card=><Card key={card.label}><CardHeader><CardTitle>{card.label}</CardTitle></CardHeader><CardContent className="text-3xl font-bold">{card.value}</CardContent></Card>)}</div></PracticeShell>}

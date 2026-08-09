@@ -1,0 +1,7 @@
+"use client";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge"; import { Button } from "@/components/ui/button"; import { Card, CardContent } from "@/components/ui/card";
+import { markPlannerNotificationReadAction } from "@/features/learning-planner/actions/notification-actions";
+import type { PlannerNotification } from "@/features/learning-planner/types/learning-planner";
+export function NotificationList({ notifications }: { notifications: PlannerNotification[] }) { const [pending,start]=useTransition(); const router=useRouter(); if(!notifications.length) return <Card><CardContent className="p-8 text-center text-muted-foreground">You have no Learning Planner notifications.</CardContent></Card>; return <div className="space-y-3">{notifications.map(item=><Card key={item.recipientId}><CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><p className="font-semibold">{item.title}</p><Badge>{item.priority}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{item.message}</p><p className="mt-2 text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()} · {item.deliveryChannel.replaceAll("_"," ")}</p></div>{!item.readAt && <Button size="sm" variant="outline" disabled={pending} onClick={()=>start(async()=>{await markPlannerNotificationReadAction({recipientId:item.recipientId});router.refresh();})}>Mark read</Button>}</CardContent></Card>)}</div>; }

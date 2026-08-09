@@ -18,6 +18,7 @@ export interface AuthProfile {
   role: string | null;
   isActive: boolean;
   instituteId: string | null;
+  branchId: string | null;
   instituteName: string | null;
   instituteShortName: string | null;
   instituteLogoUrl: string | null;
