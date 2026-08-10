@@ -16,7 +16,7 @@ export default async function ProtectedLayout({
   const profile = await requireAuth();
   const destination = getRoleDestination(profile.role);
 
-  if (destination !== "/dashboard") {
+  if (destination !== "/dashboard" && destination !== "/student/dashboard") {
     redirect(destination);
   }
 
