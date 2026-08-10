@@ -13,7 +13,7 @@ Do not start Examinations. Do not add placeholder modules. Do not commit or push
 3. Group the Administrator sidebar into clear functional sections.
 4. Ensure Student/Parent navigation is role-specific and only exposes routes that actually exist and are authorized.
 5. Remove dead links, Coming Soon links, duplicate destinations, and misleading placeholders.
-6. Preserve all existing working Attendance, Learning Planner, Practice Work, Student, Masters, and Authentication behavior.
+6. Preserve all existing working Attendance, Learning Planner, Practice Work, Student, Masters, Fees, and Authentication behavior.
 
 ## Repository inspection first
 
@@ -28,6 +28,7 @@ Before editing, inspect:
 - Parent portal/dashboard routes if present
 - quick-action components/cards
 - any `coming-soon` route usage
+- Fees routes/services/tables and any Fee Heads/Payment Modes dependencies
 
 Build an actual route inventory before deciding which links remain.
 
@@ -48,6 +49,19 @@ Do not show `Coming Soon` navigation for postponed modules.
 
 Future modules can be reintroduced when implemented.
 
+## Modules intentionally retained in current scope
+
+The Fees module is intentionally part of the ERP and must remain available where implemented.
+
+Retain supporting Masters required by Fees, including:
+
+- Fee Heads
+- Payment Modes
+
+if they are used by the current Fees workflow.
+
+If Fees is only partially implemented, keep the working Fee routes and supporting Masters, remove only broken/placeholder Fee links, and report any missing Fee route separately. Do not remove Fees merely because other Finance features are postponed.
+
 ## Remove from current Administrator sidebar unless repository inspection proves they are actively implemented and intentionally retained
 
 - Parents standalone module
@@ -55,21 +69,16 @@ Future modules can be reintroduced when implemented.
 - Examinations
 - Marks
 - Report Cards
-- Finance
-- Fees
 - Communication
 - Announcements
 - generic Reports module
 - Settings
 
-Also remove finance-only Masters such as:
+Do not remove Fees.
 
-- Fee Heads
-- Payment Modes
+A generic `Finance` parent group may be retained if it is the cleanest working parent for Fees. If `/finance` itself is only a placeholder or broken route, either make the group non-navigating/expandable or use `Fees` as the direct top-level item. Do not leave a clickable broken `/finance` link.
 
-if they are not being used by any current implemented workflow.
-
-Do not delete their database schema or source code merely because they are removed from navigation. This task is primarily navigation/dashboard cleanup.
+Do not delete database schema or source code merely because a module is removed from navigation. This task is primarily navigation/dashboard cleanup.
 
 ## Administrator sidebar grouping
 
@@ -86,6 +95,8 @@ Recommended current structure:
 - Classes
 - Subjects
 - Batches
+- Fee Heads
+- Payment Modes
 
 Prefer a single parent group such as `Masters` or `Academic Setup`, whichever best matches the current design language. Avoid both if that creates duplication.
 
@@ -119,6 +130,14 @@ Attendance should be a coherent group rather than being hidden among unrelated a
 - Student Attempts
 - Analytics
 
+### Fees
+Retain the working Fee entry/entries discovered in the repository. Use either:
+
+- `Fees` as a top-level group/item; or
+- `Finance` as a non-broken expandable parent containing `Fees`.
+
+Do not include unrelated Finance placeholders.
+
 ### Account
 - Logout
 
@@ -134,6 +153,7 @@ Student navigation should contain only working student destinations, expected to
 - My Practice Work
 - My Schedule / Learning Planner view if a real Student route exists
 - My Attendance if a real Student route exists
+- Fees / My Fees only if a real Student-facing Fees route exists and is authorized
 - Notifications if a real Student route exists
 - Logout
 
@@ -146,6 +166,8 @@ Do not create fake links solely to fill the sidebar.
 If Parent portal/dashboard is not implemented yet, do not create placeholder Parent feature links.
 
 If a Parent dashboard route already exists and is valid, expose only working Parent destinations.
+
+Fees may later appear for Parents only if a real linked-child Fee route exists and current authorization supports it.
 
 Parent dashboard enhancement will be handled separately.
 
@@ -161,6 +183,7 @@ The Administrator dashboard should focus on current operational data from implem
 - Attendance
 - Learning Planner
 - Practice Work
+- Fees
 
 Where live services exist, prefer real data over static placeholder counts.
 
@@ -171,10 +194,13 @@ Recommended operational cards/areas:
 - Classes Today / Next Class
 - Upcoming Planner Events
 - Practice Work active/pending summary
+- Fee summary / outstanding fees / recent collections if live Fee data/services already exist
 - Recent Schedule Changes
 - Recent Practice activity if available
 
-Do not show Exam, Fees, Homework, Marks, Report Card, Finance, or Communication cards while those modules are not implemented.
+Do not show Exam, Homework, Marks, Report Card, generic Finance, or Communication cards while those modules are not implemented.
+
+Do not invent Fee metrics if the current Fees implementation does not expose reliable live values. In that case retain a working Fees quick action only.
 
 ## Broken-link audit
 
@@ -248,6 +274,7 @@ If authenticated browser access is available, smoke test:
 - Administrator sidebar desktop
 - Administrator mobile navigation
 - Dashboard quick actions/cards
+- Fees navigation and retained Fee routes
 - Student sidebar/dashboard
 - active-route highlighting
 - expand/collapse behavior
@@ -266,14 +293,15 @@ Report:
 4. Final Administrator grouping.
 5. Final Student navigation.
 6. Parent navigation status.
-7. Dashboard cards/actions removed.
-8. Dashboard cards/actions retained/added.
-9. Broken links found and exact fixes.
-10. Files changed.
-11. Verification command results.
-12. Browser tests completed/deferred.
-13. Confirmation Attendance/Learning Planner/Practice Work business logic was not changed.
-14. `git status -sb`.
+7. Fees routes/Masters retained and any Fee gaps found.
+8. Dashboard cards/actions removed.
+9. Dashboard cards/actions retained/added.
+10. Broken links found and exact fixes.
+11. Files changed.
+12. Verification command results.
+13. Browser tests completed/deferred.
+14. Confirmation Attendance/Learning Planner/Practice Work/Fees business logic was not changed except for navigation-safe wiring if required.
+15. `git status -sb`.
 
 Do not start Examinations.
 Do not add new unimplemented modules.
