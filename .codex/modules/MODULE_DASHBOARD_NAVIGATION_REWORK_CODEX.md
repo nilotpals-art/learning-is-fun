@@ -2,69 +2,77 @@
 ## Codex Implementation Prompt
 ### Dashboard + Sidebar Navigation Rework
 
-Rework the existing Administrator/Student/Parent dashboard navigation and dashboard links so the ERP exposes only implemented, working modules.
+Rework the existing Administrator/Student/Parent dashboard navigation and dashboard interactions so the ERP exposes only implemented, working functionality.
 
 Do not start Examinations. Do not add placeholder modules. Do not commit or push unless explicitly instructed.
 
 ## Primary goals
 
-1. Audit every sidebar item and dashboard quick-action/card link.
-2. Remove modules that are not currently implemented or intentionally postponed.
-3. Group the Administrator sidebar into clear functional sections.
-4. Ensure Student/Parent navigation is role-specific and only exposes routes that actually exist and are authorized.
-5. Remove dead links, Coming Soon links, duplicate destinations, and misleading placeholders.
-6. Preserve all existing working Attendance, Learning Planner, Practice Work, Student, Masters, Fees, and Authentication behavior.
+1. Audit every sidebar and mobile-navigation item.
+2. Audit every Dashboard Quick Action, Recent Activity item, card, metric CTA, button, View All link, and clickable widget.
+3. Remove modules that are not implemented or intentionally postponed.
+4. Keep Fees in scope.
+5. Group the Administrator sidebar into clear functional sections.
+6. Ensure Student/Parent navigation is role-specific and only exposes routes that actually exist and are authorized.
+7. Remove dead links, Coming Soon links, duplicate destinations, inert buttons, misleading placeholder actions, and static fake activity.
+8. Preserve all working Authentication, Masters, Students, Attendance, Learning Planner, Practice Work, and Fees business logic.
 
 ## Repository inspection first
 
 Before editing, inspect:
 
 - `lib/navigation.ts`
-- sidebar/mobile-navigation components
-- dashboard page/components
+- desktop sidebar and mobile-navigation components
+- Administrator dashboard page and all dashboard components
+- quick-action components
+- recent-activity components
+- stat/metric cards and their CTA/link behavior
 - role-routing/auth helpers
 - all current `app/(protected)/**/page.tsx` routes
 - Student portal/dashboard routes
 - Parent portal/dashboard routes if present
-- quick-action components/cards
-- any `coming-soon` route usage
-- Fees routes/services/tables and any Fee Heads/Payment Modes dependencies
+- any `coming-soon` usage
+- Fees routes/services/tables and Fee Heads/Payment Modes dependencies
 
-Build an actual route inventory before deciding which links remain.
+Build an actual route inventory before deciding what remains.
 
-Do not assume a route works merely because it appears in navigation.
+Do not assume a link works merely because it appears in configuration.
 
-## Navigation policy
+## Hard production-navigation rule
 
-### Hard rule
-
-Only show a navigation item when:
+Only show or render an interactive navigation/dashboard item when:
 
 - its destination route exists;
 - the route is implemented, not placeholder-only;
 - the current role is authorized to use it;
-- the feature is intentionally part of the current ERP scope.
+- the feature is intentionally part of the current ERP scope;
+- the action performs a real, useful operation.
 
 Do not show `Coming Soon` navigation for postponed modules.
+Do not leave buttons that visually appear clickable but do nothing.
+Do not use `#`, empty hrefs, placeholder click handlers, or dead routes.
 
-Future modules can be reintroduced when implemented.
+## Modules intentionally retained
 
-## Modules intentionally retained in current scope
+Retain working functionality for:
 
-The Fees module is intentionally part of the ERP and must remain available where implemented.
+- Dashboard
+- Academic Setup / Masters
+- Students / Academic Assignments
+- Attendance
+- Learning Planner
+- Practice Work
+- Fees
+- Account / Logout
 
-Retain supporting Masters required by Fees, including:
+Fees is intentionally part of the ERP.
+Retain Fee Heads and Payment Modes where required by the current Fees workflow.
 
-- Fee Heads
-- Payment Modes
+If Fees is only partially implemented, keep all genuinely working Fee routes and supporting Masters, remove only broken Fee links, and report missing Fee pieces separately.
 
-if they are used by the current Fees workflow.
+## Remove from visible production navigation unless repository inspection proves they are actively implemented and intentionally retained
 
-If Fees is only partially implemented, keep the working Fee routes and supporting Masters, remove only broken/placeholder Fee links, and report any missing Fee route separately. Do not remove Fees merely because other Finance features are postponed.
-
-## Remove from current Administrator sidebar unless repository inspection proves they are actively implemented and intentionally retained
-
-- Parents standalone module
+- standalone Parents module
 - Homework
 - Examinations
 - Marks
@@ -73,18 +81,15 @@ If Fees is only partially implemented, keep the working Fee routes and supportin
 - Announcements
 - generic Reports module
 - Settings
+- unrelated Finance placeholders
 
-Do not remove Fees.
-
-A generic `Finance` parent group may be retained if it is the cleanest working parent for Fees. If `/finance` itself is only a placeholder or broken route, either make the group non-navigating/expandable or use `Fees` as the direct top-level item. Do not leave a clickable broken `/finance` link.
-
-Do not delete database schema or source code merely because a module is removed from navigation. This task is primarily navigation/dashboard cleanup.
+Do not delete their historical database schema/migrations merely because they are removed from navigation.
 
 ## Administrator sidebar grouping
 
-Use grouped/collapsible sections following the existing sidebar architecture.
+Use grouped/collapsible sections consistent with the current sidebar architecture.
 
-Recommended current structure:
+Recommended structure:
 
 ### Overview
 - Dashboard
@@ -98,7 +103,7 @@ Recommended current structure:
 - Fee Heads
 - Payment Modes
 
-Prefer a single parent group such as `Masters` or `Academic Setup`, whichever best matches the current design language. Avoid both if that creates duplication.
+Use either `Masters` or `Academic Setup` as the visible parent, not duplicate parallel groups.
 
 ### Student Management
 - Students / Student Master
@@ -108,8 +113,6 @@ Prefer a single parent group such as `Masters` or `Academic Setup`, whichever be
 - Daily Attendance
 - Attendance History
 - Attendance Reports
-
-Attendance should be a coherent group rather than being hidden among unrelated academic placeholders.
 
 ### Learning Planner
 - Overview
@@ -131,53 +134,40 @@ Attendance should be a coherent group rather than being hidden among unrelated a
 - Analytics
 
 ### Fees
-Retain the working Fee entry/entries discovered in the repository. Use either:
+Use either:
+- a direct top-level Fees item/group; or
+- a Finance parent only if that parent itself is not a broken navigable route.
 
-- `Fees` as a top-level group/item; or
-- `Finance` as a non-broken expandable parent containing `Fees`.
-
-Do not include unrelated Finance placeholders.
+Do not retain unrelated Finance placeholders.
 
 ### Account
 - Logout
 
-Do not add Examinations or any postponed module.
-
 ## Student sidebar
 
-Inspect the Student dashboard enhancement work/current portal first.
-
-Student navigation should contain only working student destinations, expected to include where implemented:
+Expose only actual working Student destinations, expected to include where implemented:
 
 - Dashboard
 - My Practice Work
-- My Schedule / Learning Planner view if a real Student route exists
+- My Schedule if a real Student route exists
 - My Attendance if a real Student route exists
-- Fees / My Fees only if a real Student-facing Fees route exists and is authorized
+- My Fees only if a real authorized Student Fee route exists
 - Notifications if a real Student route exists
 - Logout
 
 Do not expose Administrator routes to Students.
-
-Do not create fake links solely to fill the sidebar.
+Do not invent links simply to make the sidebar look full.
 
 ## Parent sidebar
 
-If Parent portal/dashboard is not implemented yet, do not create placeholder Parent feature links.
+If the Parent dashboard is not implemented yet, do not create fake Parent feature links.
+If working Parent routes exist, expose only those valid linked-child destinations.
 
-If a Parent dashboard route already exists and is valid, expose only working Parent destinations.
+## Administrator Dashboard rework
 
-Fees may later appear for Parents only if a real linked-child Fee route exists and current authorization supports it.
+The dashboard must become a real operational dashboard, not a collection of static placeholders.
 
-Parent dashboard enhancement will be handled separately.
-
-## Dashboard rework
-
-Audit every card, metric, quick action, recent activity link, button, and CTA on the Administrator dashboard.
-
-Remove or replace links to postponed/unimplemented modules.
-
-The Administrator dashboard should focus on current operational data from implemented modules:
+Focus on implemented modules:
 
 - Students
 - Attendance
@@ -185,52 +175,141 @@ The Administrator dashboard should focus on current operational data from implem
 - Practice Work
 - Fees
 
-Where live services exist, prefer real data over static placeholder counts.
+Where reliable services already exist, use live data rather than hardcoded placeholder counts.
+Do not invent database metrics solely for appearance.
 
-Recommended operational cards/areas:
+Recommended dashboard areas:
 
 - Active Students
-- Attendance Today / Attendance status
+- Attendance Today / attendance status
 - Classes Today / Next Class
 - Upcoming Planner Events
 - Practice Work active/pending summary
-- Fee summary / outstanding fees / recent collections if live Fee data/services already exist
+- Fee summary / outstanding fees / recent collections only when real Fee services provide reliable values
 - Recent Schedule Changes
-- Recent Practice activity if available
+- Recent Practice activity
 
-Do not show Exam, Homework, Marks, Report Card, generic Finance, or Communication cards while those modules are not implemented.
+Remove Exam, Homework, Marks, Report Card, generic Finance, Communication, and other postponed cards.
 
-Do not invent Fee metrics if the current Fees implementation does not expose reliable live values. In that case retain a working Fees quick action only.
+## Quick Actions — MUST WORK
+
+Audit the complete Quick Actions component and every action it renders.
+
+Every Quick Action must:
+
+- navigate to an existing implemented route; or
+- invoke a real authorized operation/dialog that works end-to-end.
+
+Recommended Administrator Quick Actions, only where corresponding routes exist:
+
+- Add / Manage Student
+- Take Attendance
+- Open Attendance Reports
+- Open Learning Planner / Calendar
+- Create Class Schedule or Event
+- Open Practice Work
+- Create Practice Set / Generate Questions if available
+- Open Fees / Record or Manage Fee activity if an implemented route exists
+
+Remove actions pointing to Homework, Examinations, Marks, Report Cards, Announcements, generic Finance, Settings, or Coming Soon pages.
+
+Do not keep a Quick Action just because it was in the original dashboard.
+
+For each retained Quick Action, verify:
+
+1. href/action target exists;
+2. current role is authorized;
+3. clicking reaches the intended working screen/action;
+4. active/error/loading behavior is sensible;
+5. mobile and desktop both work.
+
+## Recent Activity — MUST BE REAL AND CLICKABLE
+
+Audit the existing Recent Activity component.
+
+Do not display fake/static demo activity as if it were live data.
+
+Where current services/data allow it, derive recent activity from implemented modules such as:
+
+- recent Student admission/profile activity;
+- recent Attendance activity/corrections;
+- recent Learning Planner schedule changes/reschedules/cancellations;
+- recent Practice Work publication/assignments/completed attempts;
+- recent Fee activity if reliable Fee data/services already exist.
+
+Each activity row should contain where meaningful:
+
+- clear activity label;
+- relevant entity/context;
+- date/time;
+- stable database ID as React key;
+- a valid detail/list destination when the user can drill down.
+
+If an activity type has no safe detail route, render it as informational text rather than a fake clickable link.
+
+If there is not enough reliable live activity data, show an honest empty state such as `No recent activity yet.` rather than seeded/demo records.
+
+Any `View all activity` link must either lead to a real implemented activity/history route or be removed.
+
+## Dashboard stat cards and CTAs
+
+Audit every stat/metric card.
+
+A card may be informational without a link. If it is clickable or has a CTA, the destination must work.
+
+Examples:
+
+- Active Students → Students list
+- Attendance Today → Daily Attendance or Attendance History as appropriate
+- Classes Today → Learning Planner
+- Practice Work Pending → relevant Practice Work list
+- Fees → working Fees route
+
+Remove or neutralize cards whose destinations are postponed modules.
+
+Do not use a clickable card with no meaningful destination.
+
+## Other dashboard interaction audit
+
+Also inspect and fix:
+
+- `View all` links
+- text links inside cards
+- buttons inside Recent Activity
+- badges that are clickable
+- dropdown actions
+- mobile quick-action controls
+- empty-state CTAs
+- breadcrumb links
+- dashboard header shortcuts
+
+Every interactive element must have a verified destination/action.
 
 ## Broken-link audit
 
-Programmatically and manually audit all hrefs produced by navigation/dashboard configuration.
+Programmatically audit all hrefs produced by navigation and dashboard configuration.
 
 For each enabled visible href:
 
-- confirm a matching Next.js route exists;
-- confirm expected role access;
+- confirm matching Next.js route exists;
+- confirm role access;
 - confirm no redirect loop;
-- confirm it does not land on generic Coming Soon content;
-- confirm parent group href behavior is intentional.
+- confirm it is not generic Coming Soon content;
+- confirm parent-group href behavior is intentional.
 
-If a parent nav group is expandable only, do not make its label navigate to a non-existent route unless the component architecture requires a valid route.
+If a parent group is expandable only, do not make it navigate to a broken route.
 
 ## Navigation data cleanup
 
-Refactor `lib/navigation.ts` if useful so it does not depend on `futureItem()` for current production navigation.
+Refactor `lib/navigation.ts` if useful so current production navigation no longer depends on disabled `futureItem()` placeholders.
 
-It is acceptable to retain helper/type definitions only if still used elsewhere, but visible navigation should not contain disabled placeholders.
+Keep stable unique keys such as `item.href`, `child.href`, and database IDs for live collections.
+Do not regress the previous React key fix.
 
-Keep stable unique keys such as `item.href` / `child.href`.
+## Mobile navigation
 
-Do not regress the previous React list-key fix.
-
-## Mobile sidebar
-
-Apply the same grouping and filtering to mobile navigation.
-
-Desktop and mobile must consume the same canonical navigation configuration where possible so links cannot drift apart.
+Desktop and mobile should consume the same canonical navigation data where possible.
+Apply identical role filtering and remove the same dead links.
 
 ## UX requirements
 
@@ -238,25 +317,24 @@ Desktop and mobile must consume the same canonical navigation configuration wher
 - collapsible groups where appropriate
 - sensible active-route highlighting
 - no duplicate links
-- no disabled/dead rows
-- no `Coming Soon` badge clutter
-- compact sidebar appropriate for an ERP
-- responsive behavior maintained
-- accessible buttons/links
+- no dead/disabled production rows
+- no Coming Soon badge clutter
+- compact ERP sidebar
+- responsive layout
+- accessible links/buttons
+- honest empty states
+- working loading/error states
 
 ## Role safety
 
 Navigation hiding is not authorization.
-
-Do not weaken existing server-side/RLS authorization.
-
-This task must not broaden Student or Parent access merely to make a link work.
+Do not weaken server-side authorization or RLS to make links work.
+Do not broaden Student/Parent access.
 
 ## No destructive module deletion
 
-Removing a feature from navigation does NOT mean dropping its database tables/migrations or deleting historical code unless the file is clearly an obsolete placeholder and safe to remove.
-
-Prefer hiding/removing configuration entries rather than destructive database changes.
+Removing a module from navigation does not mean dropping its database objects.
+Prefer configuration/UI cleanup over destructive schema changes.
 
 ## Verification
 
@@ -267,41 +345,52 @@ Run:
 - `npm.cmd run build`
 - `git diff --check`
 
-Also perform a route/link audit and report every retained navigation href with its matching implemented route.
+Perform a complete route/link/action audit and report every retained:
+
+- sidebar href;
+- mobile-navigation href;
+- Quick Action;
+- Recent Activity drill-down link;
+- dashboard card CTA;
+- View All / secondary link.
 
 If authenticated browser access is available, smoke test:
 
 - Administrator sidebar desktop
 - Administrator mobile navigation
-- Dashboard quick actions/cards
-- Fees navigation and retained Fee routes
-- Student sidebar/dashboard
+- every retained Quick Action
+- Recent Activity rendering and drill-down links
+- every clickable dashboard stat/card
+- all retained Fees links
+- Student sidebar/dashboard links
 - active-route highlighting
-- expand/collapse behavior
-- direct navigation to every retained link
-- browser console for React/hydration errors
+- group expand/collapse
+- browser console for React/hydration/runtime errors
 
-If browser automation is unavailable, explicitly say which interaction tests remain manual.
+If browser automation is unavailable, clearly identify which interaction tests remain manual.
 
 ## Required final report
 
 Report:
 
-1. Current route inventory found.
+1. Route inventory found.
 2. Navigation items removed.
 3. Navigation items retained.
 4. Final Administrator grouping.
 5. Final Student navigation.
 6. Parent navigation status.
-7. Fees routes/Masters retained and any Fee gaps found.
-8. Dashboard cards/actions removed.
-9. Dashboard cards/actions retained/added.
-10. Broken links found and exact fixes.
-11. Files changed.
-12. Verification command results.
-13. Browser tests completed/deferred.
-14. Confirmation Attendance/Learning Planner/Practice Work/Fees business logic was not changed except for navigation-safe wiring if required.
-15. `git status -sb`.
+7. Fees routes/Masters retained and any Fee gaps.
+8. Quick Actions before/after and exact working destinations.
+9. Recent Activity source/data behavior and drill-down destinations.
+10. Dashboard cards/actions removed.
+11. Dashboard cards/actions retained/added.
+12. Broken links found and exact fixes.
+13. Dead/inert buttons found and exact fixes.
+14. Files changed.
+15. Verification command results.
+16. Browser tests completed/deferred.
+17. Confirmation Attendance/Learning Planner/Practice Work/Fees business logic was not changed except navigation/dashboard read-only wiring where required.
+18. `git status -sb`.
 
 Do not start Examinations.
 Do not add new unimplemented modules.
