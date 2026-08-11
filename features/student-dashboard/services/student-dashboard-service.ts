@@ -3,6 +3,7 @@ import "server-only";
 import type { AuthProfile } from "@/features/auth/types/auth";
 import type { AttendanceTotals } from "@/features/attendance-reports/types/attendance-report";
 import { listScheduleEvents } from "@/features/learning-planner/services/event-service";
+import { getHolidayCalendar } from "@/features/learning-planner/services/holiday-service";
 import { listPlannerNotifications } from "@/features/learning-planner/services/notification-service";
 import type { ScheduleEvent } from "@/features/learning-planner/types/learning-planner";
 import { getStudentQuote } from "@/features/student-dashboard/services/quote-service";
@@ -10,6 +11,7 @@ import type {
   StudentDashboardData,
   StudentDashboardEvent,
   StudentDashboardIdentity,
+  StudentHoliday,
   StudentPracticeProgress,
   StudentPracticeSummary,
 } from "@/features/student-dashboard/types/student-dashboard";
@@ -173,27 +175,32 @@ export async function getStudentDashboardData(profile: AuthProfile): Promise<Stu
   const upcomingEnd = new Date(today);
   upcomingEnd.setDate(upcomingEnd.getDate() + 14);
 
-  const [eventsResult, practiceResult, attendanceResult, notificationsResult, quote] = await Promise.all([
+  const [eventsResult, practiceResult, attendanceResult, notificationsResult, quote, holidayResult] = await Promise.all([
     listScheduleEvents(profile, { dateFrom: dateValue(today), dateTo: dateValue(upcomingEnd), batchId: student.batchId ?? undefined }).catch(() => []),
     getPractice(profile, student).catch(() => ({ summary: { pending: 0, inProgress: 0, completed: 0, dueSoon: 0, overdue: 0, actionableItem: null }, progress: { submittedAttempts: 0, completedSets: 0, averagePercentage: null, latestPercentage: null, firstAttemptPercentage: null, retryImprovement: null } })),
     getAttendance(profile, student).catch(() => null),
     listPlannerNotifications(profile).catch(() => []),
     getStudentQuote(),
+    getHolidayCalendar(profile, dateValue(today), dateValue(upcomingEnd)).catch(() => ({ holidays: [], providerAvailable: false })),
   ]);
   const events = eventsResult.map(toDashboardEvent);
   const todayValue = dateValue(today);
-  const todaysEvents = events.filter((event) => event.eventDate === todayValue);
+  const customHolidays: StudentHoliday[] = events.filter((event) => event.scheduleType === "holiday" && event.status !== "cancelled").map((event) => ({ id: event.id, name: event.title, date: event.eventDate, scope: "institute" }));
+  const holidays: StudentHoliday[] = [...customHolidays, ...holidayResult.holidays.filter((holiday) => holiday.observedAsHoliday !== false).map((holiday) => ({ id: holiday.id, name: holiday.name, date: holiday.date, scope: holiday.scope }))].filter((holiday,index,items)=>items.findIndex(item=>item.date===holiday.date&&item.name===holiday.name)===index);
+  const learningEvents = events.filter((event) => event.scheduleType !== "holiday");
+  const todaysEvents = learningEvents.filter((event) => event.eventDate === todayValue);
   const nextEvent = todaysEvents.find((event) => event.status !== "cancelled" && (!event.startTime || event.startTime >= today.toTimeString().slice(0, 5))) ?? null;
 
   return {
     student,
     quote,
     todaysEvents,
+    holidays,
     nextEvent,
     practice: practiceResult.summary,
     attendance: attendanceResult,
     progress: practiceResult.progress,
-    upcomingEvents: events.filter((event) => event.eventDate > todayValue).slice(0, 6),
+    upcomingEvents: learningEvents.filter((event) => event.eventDate > todayValue).slice(0, 6),
     notifications: notificationsResult.slice(0, 5).map((notification) => ({ recipientId: notification.recipientId, title: notification.title, message: notification.message, priority: notification.priority, readAt: notification.readAt, createdAt: notification.createdAt })),
     unreadNotifications: notificationsResult.filter((notification) => !notification.readAt).length,
   };
@@ -204,8 +211,10 @@ export async function getStudentSchedule(profile: AuthProfile): Promise<StudentD
   const from = new Date();
   const to = new Date(from);
   to.setDate(to.getDate() + 30);
-  return (await listScheduleEvents(profile, { dateFrom: dateValue(from), dateTo: dateValue(to), batchId: student.batchId ?? undefined })).map(toDashboardEvent);
+  return (await listScheduleEvents(profile, { dateFrom: dateValue(from), dateTo: dateValue(to), batchId: student.batchId ?? undefined })).filter((event)=>event.scheduleType!=="holiday").map(toDashboardEvent);
 }
+
+export async function getStudentScheduleHolidays(profile:AuthProfile):Promise<StudentHoliday[]>{const from=new Date();const to=new Date(from);to.setDate(to.getDate()+30);const calendar=await getHolidayCalendar(profile,dateValue(from),dateValue(to));return calendar.holidays.filter(holiday=>holiday.observedAsHoliday!==false).map(holiday=>({id:holiday.id,name:holiday.name,date:holiday.date,scope:holiday.scope}));}
 
 export async function getStudentAttendance(profile: AuthProfile): Promise<AttendanceTotals | null> {
   return getAttendance(profile, await getIdentity(profile));

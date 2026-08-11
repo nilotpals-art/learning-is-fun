@@ -70,3 +70,9 @@ export interface ScheduleGenerationResult {
 export type ScheduleGenerationActionResult =
   | { status: "success"; message: string; result: ScheduleGenerationResult }
   | { status: "error"; message: string; fieldErrors?: Record<string, string[] | undefined> };
+
+export type HolidayScope = "national" | "state" | "institute" | "branch";
+export interface HolidaySettings { countryCode: "IN"; stateCode: string | null; showNationalHolidays: boolean; showStateHolidays: boolean }
+export interface PublicHoliday { id: string; externalId: string | null; provider: string | null; name: string; date: string; scope: HolidayScope; subdivisionCode: string | null; branchId: string | null; source: "external" | "imported" | "institute"; readOnly: boolean; imported: boolean; observedAsHoliday: boolean | null }
+export interface HolidayCalendarData { holidays: PublicHoliday[]; providerAvailable: boolean }
+export interface HolidayImportInput { externalId: string; provider: string; name: string; date: string; scope: "national" | "state"; subdivisionCode?: string; branchId?: string; observedAsHoliday: boolean }

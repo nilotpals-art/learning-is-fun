@@ -97,6 +97,8 @@ export function StudentDashboard({ data }: { data: StudentDashboardData }) {
         </Card>
       </div>
 
+      {data.holidays.length ? <Card className="border-amber-300 bg-amber-50/70 dark:bg-amber-950/20"><CardHeader><CardTitle>Holiday Calendar</CardTitle></CardHeader><CardContent className="space-y-2">{data.holidays.slice(0,4).map((holiday)=><p key={holiday.id} className="text-sm"><strong>Holiday: {holiday.name}</strong> · {formatDate(holiday.date)}</p>)}</CardContent></Card> : null}
+
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="size-5 text-emerald-600" />My Attendance</CardTitle></CardHeader>

@@ -33,6 +33,7 @@ export interface StudentDashboardEvent {
   scheduleType: ScheduleType;
   status: ScheduleStatus;
 }
+export interface StudentHoliday { id: string; name: string; date: string; scope: "national" | "state" | "institute" | "branch" }
 
 export interface StudentPracticeItem {
   assignmentId: string;
@@ -77,6 +78,7 @@ export interface StudentDashboardData {
   student: StudentDashboardIdentity;
   quote: StudentQuote;
   todaysEvents: StudentDashboardEvent[];
+  holidays: StudentHoliday[];
   nextEvent: StudentDashboardEvent | null;
   practice: StudentPracticeSummary;
   attendance: AttendanceTotals | null;

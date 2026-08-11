@@ -95,6 +95,7 @@ export const navigation: readonly NavigationItem[] = [
     item("Calendar", "/learning-planner/calendar", "calendar"),
     item("Class Schedule", "/learning-planner/schedules", "planner"),
     item("Events", "/learning-planner/events", "planner"),
+    item("Holiday Settings", "/learning-planner/holidays", "calendar"),
     item("Notifications", "/learning-planner/notifications", "communication"),
     item("Schedule History", "/learning-planner/history", "reports"),
   ]),
