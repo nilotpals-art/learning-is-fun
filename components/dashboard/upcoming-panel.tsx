@@ -1,32 +1,16 @@
-import { Bell, BookOpenText, CalendarDays, NotebookTabs } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays } from "lucide-react";
 
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import type { DashboardUpcomingEvent } from "@/features/dashboard/types/dashboard";
 
-const categories = [
-  { title: "Classes", icon: CalendarDays },
-  { title: "Homework deadlines", icon: BookOpenText },
-  { title: "Exams", icon: NotebookTabs },
-  { title: "Announcements", icon: Bell },
-] as const;
-
-export function UpcomingPanel() {
+export function UpcomingPanel({ events }: { events: readonly DashboardUpcomingEvent[] }) {
   return (
-    <DashboardSection
-      title="Upcoming"
-      description="What’s ahead across your institute"
-      action={<Badge variant="secondary">Today</Badge>}
-      contentClassName="space-y-2"
-    >
-      {categories.map(({ title, icon: Icon }) => (
-        <div key={title} className="flex items-center gap-3 rounded-xl border bg-background/60 p-3">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <Icon className="size-4" aria-hidden="true" />
-          </span>
-          <span className="flex-1 text-sm font-medium">{title}</span>
-          <span className="text-xs text-muted-foreground">Nothing scheduled</span>
-        </div>
-      ))}
+    <DashboardSection title="Upcoming Planner Events" description="The next 14 days" action={<Button nativeButton={false} size="sm" variant="outline" render={<Link href="/learning-planner/calendar" />}>View Calendar</Button>} contentClassName="space-y-3">
+      {events.length ? events.map((event) => <article key={event.id} className="rounded-xl border bg-background/60 p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{event.title}</p><p className="mt-1 text-xs text-muted-foreground">{event.eventDate} · {event.startTime ?? "All day"}{event.batchName ? ` · ${event.batchName}` : ""}</p></div><Badge variant={event.status === "cancelled" ? "destructive" : "outline"}>{event.status}</Badge></div></article>) : <EmptyState icon={CalendarDays} title="No upcoming events" description="No Planner events are scheduled in the next 14 days." compact />}
     </DashboardSection>
   );
 }

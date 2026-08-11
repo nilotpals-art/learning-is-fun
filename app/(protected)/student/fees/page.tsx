@@ -1,0 +1,2 @@
+import { StudentFeePortal } from "@/features/fees/components/fees-manager";import { getStudentIdForProfile,listFeeDues,listFeePayments } from "@/features/fees/services/fee-service";import { requireRole } from "@/lib/auth/services/auth-service";
+export default async function Page(){const p=await requireRole(["Student"]);const id=await getStudentIdForProfile(p);const [dues,payments]=await Promise.all([listFeeDues(p,id),listFeePayments(p,id)]);return <StudentFeePortal dues={dues} payments={payments}/>}

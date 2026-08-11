@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { CalendarPlus, MapPin, MessageSquareText, UserRound, UsersRound } from "lucide-react";
 
 import { FormSection } from "@/components/layout/form-section";
@@ -21,12 +21,15 @@ import {
   createStudent,
   updateStudent,
 } from "@/features/students/actions/student-actions";
+import { loadAdmissionFeeStructure } from "@/features/fees/actions/fee-structure-actions";
+import type { FeeStructure } from "@/features/fees/types/fee-structure";
 import {
   PARENT_RELATIONSHIPS,
   STUDENT_GENDERS,
   STUDENT_STATUSES,
   type ParentConflictDetails,
   type StudentAcademicYearOption,
+  type StudentClassOption,
   type StudentRecord,
 } from "@/features/students/types/student";
 import {
@@ -56,7 +59,7 @@ function FormField({ label, children, error }: { label: string; children: React.
 
 const today = new Date().toISOString().slice(0, 10);
 
-function createDefaults(years: StudentAcademicYearOption[]): StudentCreateValues {
+function createDefaults(years: StudentAcademicYearOption[], classes: StudentClassOption[]): StudentCreateValues {
   return {
     name: "",
     motherName: "",
@@ -70,6 +73,9 @@ function createDefaults(years: StudentAcademicYearOption[]): StudentCreateValues
     parentMobile: "",
     parentEmail: "",
     academicYearId: years.find((year) => year.isCurrent)?.id ?? years[0]?.id ?? "",
+    classId: classes[0]?.id ?? "",
+    feeStructureId: null,
+    feeOverrides: [],
     admissionDate: today,
     status: "Active",
     comments: "",
@@ -81,21 +87,25 @@ export function StudentForm({
   open,
   student,
   academicYears,
+  classes,
   onOpenChange,
   onSaved,
 }: {
   open: boolean;
   student: StudentRecord | null;
   academicYears: StudentAcademicYearOption[];
+  classes: StudentClassOption[];
   onOpenChange: (open: boolean) => void;
   onSaved: (message: string) => void;
 }) {
   const editing = Boolean(student);
   const [isPending, startTransition] = useTransition();
   const [conflict, setConflict] = useState<ParentConflictDetails | null>(null);
+  const [feeStructure, setFeeStructure] = useState<FeeStructure | null>(null);
+  const [loadedFeeSelection, setLoadedFeeSelection] = useState<string | null>(null);
   const createForm = useForm<StudentCreateValues>({
     resolver: zodResolver(studentCreateSchema),
-    defaultValues: createDefaults(academicYears),
+    defaultValues: createDefaults(academicYears, classes),
   });
   const editForm = useForm<StudentEditValues>({
     resolver: zodResolver(studentEditSchema),
@@ -127,12 +137,33 @@ export function StudentForm({
         comments: student.comments ?? "",
       });
     } else {
-      createForm.reset(createDefaults(academicYears));
+      createForm.reset(createDefaults(academicYears, classes));
     }
-  }, [academicYears, createForm, editForm, open, student]);
+  }, [academicYears, classes, createForm, editForm, open, student]);
+
+  const selectedYear = useWatch({ control: createForm.control, name: "academicYearId" });
+  const selectedClass = useWatch({ control: createForm.control, name: "classId" });
+  const feeOverrides = useWatch({ control: createForm.control, name: "feeOverrides" });
+  const feeSelectionKey = `${selectedYear}:${selectedClass}`;
+  const feeLookupDone = loadedFeeSelection === feeSelectionKey;
+  useEffect(() => {
+    if (!open || editing || !selectedYear || !selectedClass) return;
+    let current = true;
+    loadAdmissionFeeStructure({ academicYearId: selectedYear, classId: selectedClass }).then((result) => {
+      if (!current) return;
+      const structure = result.status === "success" ? result.data ?? null : null;
+      setFeeStructure(structure);
+      setLoadedFeeSelection(`${selectedYear}:${selectedClass}`);
+      createForm.setValue("feeStructureId", structure?.id ?? null);
+      createForm.setValue("feeOverrides", structure?.items.map((item) => ({ itemId: item.id, include: true, amount: item.amount, discountType: item.defaultDiscountType, discountValue: item.defaultDiscountValue })) ?? []);
+    });
+    return () => { current = false; };
+  }, [createForm, editing, open, selectedClass, selectedYear]);
 
   function close() {
     setConflict(null);
+    setFeeStructure(null);
+    setLoadedFeeSelection(null);
     onOpenChange(false);
   }
 
@@ -152,7 +183,7 @@ export function StudentForm({
       return;
     }
     close();
-    onSaved(result.message);
+    onSaved(result.feesWarning ? `${result.message} ${result.feesWarning}` : result.message);
   }
 
   const submitCreate = createForm.handleSubmit((values) => {
@@ -219,11 +250,15 @@ export function StudentForm({
 
             <FormSection title="Admission" icon={CalendarPlus} theme="academic-years">
               <div className="grid gap-4 sm:grid-cols-2">
-                {!editing ? <FormField label="Academic Year" error={createForm.formState.errors.academicYearId?.message}><select className={fieldClass} disabled={isPending || academicYears.length === 0} {...createForm.register("academicYearId")}>{academicYears.map((year) => <option key={year.id} value={year.id}>{year.name}{year.isCurrent ? " (Current)" : ""}</option>)}</select></FormField> : null}
+                {!editing ? <><FormField label="Academic Year" error={createForm.formState.errors.academicYearId?.message}><select className={fieldClass} disabled={isPending || academicYears.length === 0} {...createForm.register("academicYearId")}>{academicYears.map((year) => <option key={year.id} value={year.id}>{year.name}{year.isCurrent ? " (Current)" : ""}</option>)}</select></FormField><FormField label="Class" error={createForm.formState.errors.classId?.message}><select className={fieldClass} disabled={isPending || classes.length === 0} {...createForm.register("classId")}>{classes.map((value) => <option key={value.id} value={value.id}>{value.name}</option>)}</select></FormField></> : null}
                 <FormField label="Admission Date" error={errors.admissionDate?.message}><Input type="date" disabled={isPending} {...registerCommon("admissionDate")} /></FormField>
                 <FormField label="Status" error={errors.status?.message}><select className={fieldClass} disabled={isPending} {...registerCommon("status")}>{STUDENT_STATUSES.map((value) => <option key={value}>{value}</option>)}</select></FormField>
               </div>
             </FormSection>
+
+            {!editing ? <FormSection title="Fee Structure" icon={CalendarPlus} theme="fee-heads">
+              {!feeLookupDone ? <p className="text-sm text-muted-foreground">Loading the applicable Fee Structure…</p> : !feeStructure ? <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">No fee structure configured for this class. Admission may continue; Fees will not be assigned yet.</p> : <div className="space-y-3"><div><p className="font-semibold">{feeStructure.name}</p><p className="text-sm text-muted-foreground">Monthly dues are generated automatically on the configured due day. Admissions after that day begin in the following month.</p></div>{feeStructure.items.map((item,index) => { const values=feeOverrides?.[index]; const gross=Number(values?.amount??item.amount); const discount=values?.discountType==="percentage"?gross*Number(values.discountValue??0)/100:values?.discountType==="fixed"?Number(values.discountValue??0):0; const net=Math.max(gross-discount,0); const monthly=item.scheduleType==="monthly"; return <div key={item.id} className="grid gap-3 rounded-xl border p-3 sm:grid-cols-5"><div className="sm:col-span-2"><p className="font-medium">{item.feeHeadName}</p><p className="text-xs text-muted-foreground">{item.feeNature.replaceAll("_"," ")} · {item.isMandatory?"Mandatory":"Optional"} · {item.scheduleType.replaceAll("_"," ")}</p><p className="mt-1 text-sm font-semibold">{monthly?"Net Monthly Amount":"Net Amount"} {new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR"}).format(net)}</p></div><label className="grid gap-1 text-xs">{monthly?"Recurring Amount":"Amount"}<Input type="number" min="0.01" step="0.01" disabled={isPending} {...createForm.register(`feeOverrides.${index}.amount`,{valueAsNumber:true})}/></label><label className="grid gap-1 text-xs">Discount<select className={fieldClass} disabled={isPending} {...createForm.register(`feeOverrides.${index}.discountType`, { setValueAs: (value) => value === "" ? null : value })}><option value="">None</option><option value="fixed">Fixed</option><option value="percentage">Percentage</option></select></label><div className="grid gap-2"><label className="grid gap-1 text-xs">Discount Value<Input type="number" min="0" step="0.01" disabled={isPending} {...createForm.register(`feeOverrides.${index}.discountValue`,{valueAsNumber:true})}/></label><label className="flex gap-2 text-xs"><input type="checkbox" disabled={isPending||item.isMandatory} checked={values?.include??true} onChange={event=>createForm.setValue(`feeOverrides.${index}.include`,event.target.checked)}/>{item.isMandatory?"Required":"Include"}</label></div></div>})}</div>}
+            </FormSection> : null}
 
             <FormSection title="Comments" icon={MessageSquareText} theme="subjects">
               <FormField label="Internal Comments" error={errors.comments?.message}><textarea className={textareaClass} disabled={isPending} {...registerCommon("comments")} /></FormField>
@@ -231,7 +266,7 @@ export function StudentForm({
           </form>
           <DialogFooter>
             <Button type="button" variant="outline" disabled={isPending} onClick={close}>Cancel</Button>
-            <Button type="submit" form="student-form" disabled={isPending || (!editing && academicYears.length === 0)}>{isPending ? "Saving…" : editing ? "Save Changes" : "Add Student"}</Button>
+            <Button type="submit" form="student-form" disabled={isPending || (!editing && (academicYears.length === 0 || classes.length === 0))}>{isPending ? "Saving…" : editing ? "Save Changes" : "Add Student"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

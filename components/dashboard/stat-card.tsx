@@ -1,8 +1,9 @@
 import type { DashboardStat } from "@/features/dashboard/types/dashboard";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const toneStyles: Record<DashboardStat["tone"], string> = {
+const toneStyles: Record<NonNullable<DashboardStat["tone"]>, string> = {
   blue: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
   emerald:
     "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
@@ -12,7 +13,7 @@ const toneStyles: Record<DashboardStat["tone"], string> = {
   rose: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
 };
 
-const toneBorders: Record<DashboardStat["tone"], string> = {
+const toneBorders: Record<NonNullable<DashboardStat["tone"]>, string> = {
   blue: "before:bg-blue-500",
   emerald: "before:bg-emerald-500",
   amber: "before:bg-amber-500",
@@ -25,8 +26,9 @@ export function StatCard({
   value,
   description,
   icon: Icon,
-  tone,
-  status,
+  tone = "blue",
+  href,
+  linkLabel,
 }: DashboardStat) {
   return (
     <Card
@@ -40,9 +42,7 @@ export function StatCard({
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="mt-2 text-3xl font-extrabold tracking-tight">{value}</p>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-          {status ? (
-            <p className="mt-3 text-xs font-medium text-foreground/70">{status}</p>
-          ) : null}
+          {href && linkLabel ? <Link href={href} className="mt-3 inline-flex text-xs font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{linkLabel}</Link> : null}
         </div>
         <span
           className={cn(

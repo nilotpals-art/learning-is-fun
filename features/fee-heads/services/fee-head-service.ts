@@ -17,6 +17,7 @@ interface FeeHeadRecord {
   name: string;
   code: string;
   category: string;
+  fee_nature: "regular" | "one_time" | "refundable_deposit";
   display_order: number;
   is_active: boolean;
   created_at: string | null;
@@ -34,6 +35,7 @@ function toFeeHead(record: FeeHeadRecord, assignedIds = new Set<string>()): FeeH
     name: record.name,
     code: record.code,
     category: record.category,
+    feeNature: record.fee_nature,
     displayOrder: record.display_order,
     isActive: record.is_active,
     assigned: assignedIds.has(record.id),
@@ -55,6 +57,7 @@ function toPayload(values: FeeHeadFormValues) {
     name: normalizeUpperText(values.name),
     code: normalizeCode(values.code),
     category: getFeeHeadCategory(values),
+    fee_nature: values.feeNature,
     display_order: Number(values.displayOrder),
     is_active: values.isActive,
   };
@@ -64,7 +67,7 @@ export async function listFeeHeads(instituteId: string): Promise<FeeHead[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("fee_heads")
-    .select("id, name, code, category, display_order, is_active, created_at, updated_at")
+    .select("id, name, code, category, fee_nature, display_order, is_active, created_at, updated_at")
     .eq("institute_id", instituteId)
     .order("display_order", { ascending: true })
     .order("name", { ascending: true });
@@ -158,6 +161,7 @@ export async function insertRecommendedFeeHeads(
       name: normalizeUpperText(item.name),
       code: normalizeUpperText(item.code),
       category: item.category,
+      fee_nature: item.feeNature,
       display_order: item.displayOrder,
       is_active: item.isActive,
     }))
@@ -173,13 +177,30 @@ export async function getFeeHead(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("fee_heads")
-    .select("id, name, code, category, display_order, is_active, created_at, updated_at")
+    .select("id, name, code, category, fee_nature, display_order, is_active, created_at, updated_at")
     .eq("institute_id", instituteId)
     .eq("id", id)
     .maybeSingle();
 
   if (error) throw error;
   return data ? toFeeHead(data as FeeHeadRecord) : null;
+}
+
+export async function isFeeHeadAssigned(
+  instituteId: string,
+  feeHeadId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("student_fee_assignments")
+    .select("id")
+    .eq("institute_id", instituteId)
+    .eq("fee_head_id", feeHeadId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data !== null;
 }
 
 export async function findFeeHeadDuplicates(

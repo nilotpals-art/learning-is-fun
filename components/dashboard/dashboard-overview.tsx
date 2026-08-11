@@ -3,85 +3,81 @@ import {
   CircleDollarSign,
   ClipboardList,
   GraduationCap,
-  NotebookTabs,
+  School,
 } from "lucide-react";
 
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { AnnouncementHighlight } from "@/components/dashboard/announcement-highlight";
-import { AttendanceVisual } from "@/components/dashboard/attendance-visual";
-import { ModuleStatus } from "@/components/dashboard/module-status";
 import { UpcomingPanel } from "@/components/dashboard/upcoming-panel";
-import type { DashboardStat } from "@/features/dashboard/types/dashboard";
+import type {
+  AdministratorDashboardData,
+  DashboardStat,
+} from "@/features/dashboard/types/dashboard";
 
-const stats: readonly DashboardStat[] = [
-  {
-    title: "Total Students",
-    value: "—",
-    description: "Available with the Students module",
-    icon: GraduationCap,
-    tone: "blue",
-    status: "Waiting for student records",
-  },
-  {
-    title: "Today’s Attendance",
-    value: "—",
-    description: "Attendance module currently in progress",
-    icon: CalendarCheck,
-    tone: "emerald",
-    status: "Attendance workflow is being completed",
-  },
-  {
-    title: "Practice Work",
-    value: "—",
-    description: "Available with the Practice Work module",
-    icon: ClipboardList,
-    tone: "amber",
-    status: "Planned after Learning Planner",
-  },
-  {
-    title: "Upcoming Exams",
-    value: "—",
-    description: "Available with the Examinations module",
-    icon: NotebookTabs,
-    tone: "violet",
-    status: "Planned after Practice Work",
-  },
-  {
-    title: "Pending Fees",
-    value: "—",
-    description: "Available with the Fees module",
-    icon: CircleDollarSign,
-    tone: "rose",
-    status: "No fee data available",
-  },
-];
+export function DashboardOverview({ data }: { data: AdministratorDashboardData }) {
+  const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+  const stats: readonly DashboardStat[] = [
+    {
+      title: "Active Students",
+      value: data.activeStudents.toString(),
+      description: "Currently active Student profiles",
+      icon: GraduationCap,
+      tone: "blue",
+      href: "/students",
+      linkLabel: "Manage Students",
+    },
+    {
+      title: "Attendance Today",
+      value: data.attendanceToday.percentage === null ? "—" : `${data.attendanceToday.percentage}%`,
+      description: data.attendanceToday.total ? `${data.attendanceToday.effectivePresent} of ${data.attendanceToday.total} effectively present` : "No Attendance recorded today",
+      icon: CalendarCheck,
+      tone: "emerald",
+      href: "/attendance",
+      linkLabel: "Open Attendance",
+    },
+    {
+      title: "Classes Today",
+      value: data.classesToday.toString(),
+      description: "Non-cancelled Planner events",
+      icon: School,
+      tone: "violet",
+      href: "/learning-planner",
+      linkLabel: "Open Planner",
+    },
+    {
+      title: "Pending Practice",
+      value: data.pendingPractice.toString(),
+      description: "Assigned or in-progress work",
+      icon: ClipboardList,
+      tone: "amber",
+      href: "/practice-work/assignments",
+      linkLabel: "View Assignments",
+    },
+    {
+      title: "Outstanding Fees",
+      value: currency.format(data.feeSummary.totalOutstanding),
+      description: `${currency.format(data.feeSummary.collectionsToday)} collected today`,
+      icon: CircleDollarSign,
+      tone: "rose",
+      href: "/fees",
+      linkLabel: "Open Fees",
+    },
+  ];
 
-export function DashboardOverview() {
   return (
     <div className="space-y-6">
       <section aria-labelledby="dashboard-summary-heading">
-        <h2 id="dashboard-summary-heading" className="sr-only">Dashboard summary</h2>
+        <h2 id="dashboard-summary-heading" className="sr-only">Operational summary</h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {stats.map((stat) => (
-            <StatCard key={stat.title} {...stat} />
-          ))}
+          {stats.map((stat) => <StatCard key={stat.title} {...stat} />)}
         </div>
       </section>
-
-      <ModuleStatus />
-
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]" aria-label="Dashboard actions and schedule">
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]" aria-label="Dashboard actions and upcoming events">
         <QuickActions />
-        <UpcomingPanel />
+        <UpcomingPanel events={data.upcomingEvents} />
       </section>
-
-      <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3" aria-label="Dashboard updates">
-        <RecentActivity />
-        <AttendanceVisual />
-        <AnnouncementHighlight />
-      </section>
+      <RecentActivity activities={data.recentActivity} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   findFeeHeadDuplicates,
   getInstituteFeeHeadSetupState,
   getFeeHead,
+  isFeeHeadAssigned,
   insertFeeHead,
   insertRecommendedFeeHeads,
   updateFeeHeadRecord,
@@ -145,8 +146,18 @@ export async function updateFeeHead(
 
   const instituteId = await requireInstituteId();
   try {
-    if (!(await getFeeHead(instituteId, id.data))) {
+    const existing = await getFeeHead(instituteId, id.data);
+    if (!existing) {
       return { status: "error", message: "Fee Head not found." };
+    }
+    if (
+      existing.feeNature !== values.data.feeNature &&
+      await isFeeHeadAssigned(instituteId, id.data)
+    ) {
+      return {
+        status: "error",
+        message: "Fee Nature cannot be changed after Student assignment.",
+      };
     }
     const duplicates = await findFeeHeadDuplicates(
       instituteId,

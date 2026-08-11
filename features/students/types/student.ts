@@ -30,6 +30,8 @@ export interface StudentAcademicYearOption {
   isCurrent: boolean;
 }
 
+export interface StudentClassOption { id: string; name: string }
+
 export interface ParentConflictDetails {
   parentId: string;
   existingName: string;
@@ -42,7 +44,7 @@ export interface ParentConflictDetails {
 export type StudentFieldErrors = Partial<Record<string, string[]>>;
 
 export type StudentActionResult =
-  | { status: "success"; message: string; admissionNumber?: string }
+  | { status: "success"; message: string; admissionNumber?: string; feesWarning?: string }
   | {
       status: "parent_conflict";
       message: string;

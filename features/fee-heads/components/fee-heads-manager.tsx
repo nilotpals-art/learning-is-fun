@@ -88,6 +88,7 @@ function formValues(feeHead: FeeHead | null): FeeHeadFormValues {
         : "Other"
       : "Academic",
     customCategory: feeHead && !predefined ? feeHead.category : "",
+    feeNature: feeHead?.feeNature ?? "regular",
     displayOrder: feeHead?.displayOrder.toString() ?? "1",
     isActive: feeHead?.isActive ?? true,
   };
@@ -179,6 +180,11 @@ function FeeHeadFormDialog({
                 {FEE_HEAD_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
               </select>
               <FieldError id="fee-head-category-error" message={errors.categoryChoice?.message} />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <label htmlFor="fee-head-nature" className="text-sm font-medium">Fee Nature</label>
+              <select id="fee-head-nature" disabled={isPending || feeHead?.assigned} className={selectClassName} {...register("feeNature")}><option value="regular">Regular</option><option value="one_time">One-time</option><option value="refundable_deposit">Refundable Deposit</option></select>
+              {feeHead?.assigned ? <p className="text-xs text-muted-foreground">Fee Nature is locked after Student assignment.</p> : null}
             </div>
             {categoryChoice === "Other" ? (
               <div className="space-y-2 sm:col-span-2">
@@ -279,7 +285,7 @@ export function FeeHeadsManager({ feeHeads }: { feeHeads: FeeHead[] }) {
             ) : (
               <>
                 <div className="hidden md:block">
-                  <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Category</TableHead><TableHead>Display Order</TableHead><TableHead>Assigned</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{filteredFeeHeads.map((feeHead) => <TableRow key={feeHead.id}><TableCell className="font-medium">{feeHead.name}</TableCell><TableCell><Badge variant="outline">{feeHead.code}</Badge></TableCell><TableCell>{feeHead.category}</TableCell><TableCell>{feeHead.displayOrder}</TableCell><TableCell><Badge variant={feeHead.assigned ? "secondary" : "outline"}>{feeHead.assigned ? "Assigned" : "Not Assigned"}</Badge></TableCell><TableCell><Badge variant={feeHead.isActive ? "secondary" : "outline"}>{feeHead.isActive ? "Active" : "Inactive"}</Badge></TableCell><TableCell className="text-right"><Actions feeHead={feeHead} /></TableCell></TableRow>)}</TableBody></Table>
+                  <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Category</TableHead><TableHead>Nature</TableHead><TableHead>Display Order</TableHead><TableHead>Assigned</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{filteredFeeHeads.map((feeHead) => <TableRow key={feeHead.id}><TableCell className="font-medium">{feeHead.name}</TableCell><TableCell><Badge variant="outline">{feeHead.code}</Badge></TableCell><TableCell>{feeHead.category}</TableCell><TableCell>{feeHead.feeNature.replaceAll("_"," ")}</TableCell><TableCell>{feeHead.displayOrder}</TableCell><TableCell><Badge variant={feeHead.assigned ? "secondary" : "outline"}>{feeHead.assigned ? "Assigned" : "Not Assigned"}</Badge></TableCell><TableCell><Badge variant={feeHead.isActive ? "secondary" : "outline"}>{feeHead.isActive ? "Active" : "Inactive"}</Badge></TableCell><TableCell className="text-right"><Actions feeHead={feeHead} /></TableCell></TableRow>)}</TableBody></Table>
                 </div>
                 <div className="grid gap-3 md:hidden">{filteredFeeHeads.map((feeHead) => <div key={feeHead.id} className="rounded-2xl border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{feeHead.name}</p><div className="mt-2 flex flex-wrap items-center gap-2"><Badge variant="outline">{feeHead.code}</Badge><Badge variant={feeHead.assigned ? "secondary" : "outline"}>{feeHead.assigned ? "Assigned" : "Not Assigned"}</Badge><Badge variant={feeHead.isActive ? "secondary" : "outline"}>{feeHead.isActive ? "Active" : "Inactive"}</Badge></div></div><Actions feeHead={feeHead} /></div><p className="mt-3 text-sm text-muted-foreground">{feeHead.category}</p><p className="mt-1 text-xs text-muted-foreground">Display Order: {feeHead.displayOrder}</p></div>)}</div>
               </>

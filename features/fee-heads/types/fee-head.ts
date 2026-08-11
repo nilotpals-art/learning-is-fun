@@ -3,6 +3,7 @@ export interface FeeHead {
   name: string;
   code: string;
   category: string;
+  feeNature: "regular" | "one_time" | "refundable_deposit";
   displayOrder: number;
   isActive: boolean;
   assigned: boolean;
@@ -11,11 +12,11 @@ export interface FeeHead {
 }
 
 export const RECOMMENDED_FEE_HEADS = [
-  { name: "Tuition Fee", code: "TUI", category: "Academic", displayOrder: 1, isActive: true },
-  { name: "Examination Fee", code: "EXM", category: "Examination", displayOrder: 2, isActive: true },
-  { name: "Activity Fee", code: "ACT", category: "Academic", displayOrder: 3, isActive: true },
-  { name: "Security Deposit", code: "SEC", category: "Security Deposit", displayOrder: 4, isActive: true },
-  { name: "Miscellaneous Fee", code: "MSC", category: "Miscellaneous", displayOrder: 5, isActive: true },
+  { name: "Tuition Fee", code: "TUI", category: "Academic", feeNature: "regular", displayOrder: 1, isActive: true },
+  { name: "Examination Fee", code: "EXM", category: "Examination", feeNature: "regular", displayOrder: 2, isActive: true },
+  { name: "Activity Fee", code: "ACT", category: "Academic", feeNature: "regular", displayOrder: 3, isActive: true },
+  { name: "Security Deposit", code: "SEC", category: "Security Deposit", feeNature: "refundable_deposit", displayOrder: 4, isActive: true },
+  { name: "Miscellaneous Fee", code: "MSC", category: "Miscellaneous", feeNature: "regular", displayOrder: 5, isActive: true },
 ] as const;
 
 export type FeeHeadSetupStatus = "existing" | "missing" | "conflict";
@@ -25,6 +26,7 @@ export interface FeeHeadSetupItem {
   code: string;
   category: string;
   displayOrder: number;
+  feeNature: "regular" | "one_time" | "refundable_deposit";
   status: FeeHeadSetupStatus;
   conflictMessages: string[];
 }
@@ -43,6 +45,7 @@ export type FeeHeadFieldErrors = Partial<
     | "categoryChoice"
     | "customCategory"
     | "displayOrder"
+    | "feeNature"
     | "isActive",
     string[]
   >

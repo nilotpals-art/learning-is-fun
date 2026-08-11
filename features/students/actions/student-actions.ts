@@ -26,6 +26,7 @@ import {
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 import { deleteManagedAuthUser } from "@/lib/supabase/admin";
+import { applyFeeStructure, findFeeStructure } from "@/features/fees/services/fee-structure-service";
 
 const PATH = "/students";
 
@@ -33,6 +34,12 @@ async function requireInstituteId(): Promise<string> {
   const profile = await requireRole(DASHBOARD_ROLES);
   if (!profile.instituteId) redirect("/unauthorized");
   return profile.instituteId;
+}
+
+async function requireAdminProfile() {
+  const profile = await requireRole(DASHBOARD_ROLES);
+  if (!profile.instituteId) redirect("/unauthorized");
+  return profile;
 }
 
 function saveError(message = "We could not save the Student. Please try again."): StudentActionResult {
@@ -83,7 +90,8 @@ export async function createStudent(input: unknown): Promise<StudentActionResult
     };
   }
 
-  const instituteId = await requireInstituteId();
+  const profile = await requireAdminProfile();
+  const instituteId = profile.instituteId!;
   const values = parsed.data;
 
   try {
@@ -94,6 +102,7 @@ export async function createStudent(input: unknown): Promise<StudentActionResult
     if (await studentEmailExists(values.email)) {
       return saveError("A Student account already uses this email address.");
     }
+    const feeStructure = await findFeeStructure(profile, values.academicYearId, values.classId);
 
     const parent = await resolveParentByEmail(
       instituteId,
@@ -163,11 +172,30 @@ export async function createStudent(input: unknown): Promise<StudentActionResult
       );
     }
 
+    let feesWarning: string | undefined;
+    if (feeStructure) {
+      try {
+        const overrides = values.feeStructureId === feeStructure.id ? values.feeOverrides : feeStructure.items.map((item) => ({ itemId: item.id, include: true, amount: item.amount, discountType: item.defaultDiscountType, discountValue: item.defaultDiscountValue }));
+        await applyFeeStructure(profile, foundation.student_id, feeStructure.id, overrides);
+      } catch (error) {
+        const message = error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "";
+        feesWarning = message.includes("FEES_NO_APPLICABLE_MONTHS")
+          ? "Student admission succeeded, but no monthly due date remains within the selected Academic Year. Review Fees from Student Fees."
+          : "Student admission succeeded, but Fee assignment failed. Complete it from Student Fees.";
+      }
+    } else {
+      feesWarning = "No fee structure configured for this class. Fees were not assigned.";
+    }
+
     revalidatePath(PATH);
+    revalidatePath("/fees/student-fees");
     return {
       status: "success",
       message: `Student admitted as ${foundation.admission_no}.`,
       admissionNumber: foundation.admission_no,
+      feesWarning,
     };
   } catch (error) {
     const databaseError = error as { code?: string; message?: string };

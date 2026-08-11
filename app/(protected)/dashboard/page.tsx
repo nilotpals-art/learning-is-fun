@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
-import { requireAuth } from "@/lib/auth/services/auth-service";
+import { getAdministratorDashboard } from "@/features/dashboard/services/dashboard-service";
+import { requireRole } from "@/lib/auth/services/auth-service";
+import { DASHBOARD_ROLES } from "@/lib/navigation";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -21,7 +23,8 @@ function getGreeting(): string {
 }
 
 export default async function DashboardPage() {
-  const profile = await requireAuth();
+  const profile = await requireRole(DASHBOARD_ROLES);
+  const dashboard = await getAdministratorDashboard(profile);
 
   return (
     <div className="space-y-6">
@@ -31,7 +34,7 @@ export default async function DashboardPage() {
         role={profile.role ?? "Administrator"}
         instituteName={profile.instituteName ?? "Learning Is Fun"}
       />
-      <DashboardOverview />
+      <DashboardOverview data={dashboard} />
     </div>
   );
 }

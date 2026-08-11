@@ -8,10 +8,7 @@ import { ChevronDown, ChevronRight, GraduationCap } from "lucide-react";
 import { NavigationIcon } from "@/components/layout/navigation-icon";
 import { Badge } from "@/components/ui/badge";
 import { LogoutButton } from "@/features/auth/components/logout-button";
-import {
-  getComingSoonSlug,
-  type NavigationItem,
-} from "@/lib/navigation";
+import type { NavigationItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 interface AppSidebarProps {
@@ -20,10 +17,18 @@ interface AppSidebarProps {
   onNavigate?: () => void;
 }
 
-function getDestination(item: NavigationItem): string {
-  return item.enabled
-    ? item.href
-    : `/coming-soon/${getComingSoonSlug(item)}`;
+const exactMatchHrefs = new Set([
+  "/dashboard",
+  "/students",
+  "/attendance",
+  "/learning-planner",
+  "/practice-work",
+  "/student/dashboard",
+]);
+
+function isItemActive(item: NavigationItem, pathname: string): boolean {
+  return pathname === item.href ||
+    (!exactMatchHrefs.has(item.href) && pathname.startsWith(`${item.href}/`));
 }
 
 function NavigationLink({
@@ -37,14 +42,11 @@ function NavigationLink({
   nested?: boolean;
   onNavigate?: () => void;
 }) {
-  const destination = getDestination(item);
-  const active =
-    pathname === item.href ||
-    (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+  const active = isItemActive(item, pathname);
 
   return (
     <Link
-      href={destination}
+      href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -103,8 +105,8 @@ export function AppSidebar({
             }
 
             if (item.children.length > 0) {
-              const childActive = item.children.some(
-                (child) => pathname === child.href || pathname.startsWith(`${child.href}/`)
+              const childActive = item.children.some((child) =>
+                isItemActive(child, pathname)
               );
               const expanded = childActive || expandedGroups[item.title] === true;
               return (

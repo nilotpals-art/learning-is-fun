@@ -26,6 +26,7 @@ export const feeHeadSchema = z
         (value) => /^[1-9]\d*$/.test(value),
         "Display Order must be a whole number of one or greater."
       ),
+    feeNature: z.enum(["regular", "one_time", "refundable_deposit"]),
     isActive: z.boolean(),
   })
   .superRefine((values, context) => {

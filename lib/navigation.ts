@@ -48,307 +48,107 @@ const allPortalRoles: readonly NavigationRole[] = [
   "Parent",
 ];
 
-function futureItem(
+function item(
   title: string,
   href: string,
   icon: NavigationIconName,
   roles: readonly NavigationRole[] = DASHBOARD_ROLES
 ): NavigationItem {
-  return {
-    title,
-    href,
-    icon,
-    roles,
-    enabled: false,
-    badge: "Coming Soon",
-    children: [],
-  };
+  return { title, href, icon, roles, enabled: true, badge: null, children: [] };
+}
+
+function group(
+  title: string,
+  href: string,
+  icon: NavigationIconName,
+  children: readonly NavigationItem[]
+): NavigationItem {
+  return { title, href, icon, roles: DASHBOARD_ROLES, enabled: true, badge: null, children };
 }
 
 export const navigation: readonly NavigationItem[] = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: "dashboard",
-    roles: [...DASHBOARD_ROLES, "Parent"],
-    enabled: true,
-    badge: null,
-    children: [],
-  },
-  {
-    title: "Masters",
-    href: "/masters",
-    icon: "book-open",
-    roles: DASHBOARD_ROLES,
-    enabled: true,
-    badge: null,
-    children: [
-      {
-        title: "Academic Years",
-        href: "/masters/academic-years",
-        icon: "calendar",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "School Boards",
-        href: "/masters/school-boards",
-        icon: "school",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Classes",
-        href: "/masters/classes",
-        icon: "graduation-cap",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Subjects",
-        href: "/masters/subjects",
-        icon: "book-open",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Batches",
-        href: "/masters/batches",
-        icon: "users",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Fee Heads",
-        href: "/masters/fee-heads",
-        icon: "fees",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Payment Modes",
-        href: "/masters/payment-modes",
-        icon: "finance",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-    ],
-  },
-  {
-    title: "Students",
-    href: "/students",
-    icon: "graduation-cap",
-    roles: DASHBOARD_ROLES,
-    enabled: true,
-    badge: null,
-    children: [
-      {
-        title: "Student Master",
-        href: "/students",
-        icon: "users",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Academic Assignments",
-        href: "/students/academic-assignments",
-        icon: "graduation-cap",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-    ],
-  },
-  futureItem("Parents", "/parents", "user-round"),
-  {
-    title: "Academics",
-    href: "/academics",
-    icon: "academics",
-    roles: DASHBOARD_ROLES,
-    enabled: true,
-    badge: null,
-    children: [
-      {
-        title: "Daily Attendance",
-        href: "/attendance",
-        icon: "attendance",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Attendance History",
-        href: "/attendance/history",
-        icon: "calendar",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      {
-        title: "Attendance Reports",
-        href: "/attendance/reports",
-        icon: "reports",
-        roles: DASHBOARD_ROLES,
-        enabled: true,
-        badge: null,
-        children: [],
-      },
-      futureItem("Homework", "/homework", "homework"),
-      futureItem("Examinations", "/examinations", "exams"),
-      futureItem("Marks", "/marks", "marks"),
-      futureItem("Report Cards", "/report-cards", "report-card"),
-    ],
-  },
-  {
-    title: "Dashboard",
-    href: "/student/dashboard",
-    icon: "dashboard",
-    roles: ["Student"],
-    enabled: true,
-    badge: null,
-    children: [],
-  },
-  {
-    title: "Learning Planner",
-    href: "/learning-planner",
-    icon: "planner",
-    roles: DASHBOARD_ROLES,
-    enabled: true,
-    badge: null,
-    children: [
-      { title: "Overview", href: "/learning-planner", icon: "dashboard", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Calendar", href: "/learning-planner/calendar", icon: "calendar", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Class Schedule", href: "/learning-planner/schedules", icon: "planner", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Events", href: "/learning-planner/events", icon: "planner", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Notifications", href: "/learning-planner/notifications", icon: "communication", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Schedule History", href: "/learning-planner/history", icon: "reports", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-    ],
-  },
-  {
-    title: "Practice Work",
-    href: "/practice-work",
-    icon: "homework",
-    roles: DASHBOARD_ROLES,
-    enabled: true,
-    badge: null,
-    children: [
-      { title: "Overview", href: "/practice-work", icon: "dashboard", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Question Bank", href: "/practice-work/question-bank", icon: "book-open", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Generate Questions", href: "/practice-work/question-bank/generate", icon: "homework", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Question Templates", href: "/practice-work/templates", icon: "academics", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Generation History", href: "/practice-work/generations", icon: "reports", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Practice Sets", href: "/practice-work/sets", icon: "report-card", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Assignments", href: "/practice-work/assignments", icon: "users", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Student Attempts", href: "/practice-work/attempts", icon: "marks", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-      { title: "Analytics", href: "/practice-work/analytics", icon: "reports", roles: DASHBOARD_ROLES, enabled: true, badge: null, children: [] },
-    ],
-  },
-  {
-    title: "My Practice Work",
-    href: "/practice-work/my-work",
-    icon: "homework",
-    roles: ["Student"],
-    enabled: true,
-    badge: null,
-    children: [],
-  },
-  {
-    title: "My Schedule",
-    href: "/student/schedule",
-    icon: "calendar",
-    roles: ["Student"],
-    enabled: true,
-    badge: null,
-    children: [],
-  },
-  {
-    title: "My Attendance",
-    href: "/student/attendance",
-    icon: "attendance",
-    roles: ["Student"],
-    enabled: true,
-    badge: null,
-    children: [],
-  },
-  {
-    title: "Notifications",
-    href: "/student/notifications",
-    icon: "communication",
-    roles: ["Student"],
-    enabled: true,
-    badge: null,
-    children: [],
-  },
-  {
-    title: "Finance",
-    href: "/finance",
-    icon: "finance",
-    roles: DASHBOARD_ROLES,
-    enabled: false,
-    badge: "Coming Soon",
-    children: [futureItem("Fees", "/fees", "fees")],
-  },
-  {
-    title: "Communication",
-    href: "/communication",
-    icon: "communication",
-    roles: DASHBOARD_ROLES,
-    enabled: false,
-    badge: "Coming Soon",
-    children: [futureItem("Announcements", "/announcements", "announcements")],
-  },
-  futureItem("Reports", "/reports", "reports"),
-  futureItem("Settings", "/settings", "settings"),
-  {
-    title: "Logout",
-    href: "/logout",
-    icon: "logout",
-    roles: allPortalRoles,
-    enabled: true,
-    badge: null,
-    children: [],
-  },
+  group("Overview", "/dashboard", "dashboard", [
+    item("Dashboard", "/dashboard", "dashboard"),
+  ]),
+  group("Academic Setup", "/masters/academic-years", "book-open", [
+    item("Academic Years", "/masters/academic-years", "calendar"),
+    item("School Boards", "/masters/school-boards", "school"),
+    item("Classes", "/masters/classes", "graduation-cap"),
+    item("Subjects", "/masters/subjects", "book-open"),
+    item("Batches", "/masters/batches", "users"),
+  ]),
+  group("Fee Configuration", "/masters/fee-heads", "settings", [
+    item("Fee Heads", "/masters/fee-heads", "fees"),
+    item("Payment Modes", "/masters/payment-modes", "finance"),
+  ]),
+  group("Student Management", "/students", "graduation-cap", [
+    item("Student Master", "/students", "users"),
+    item("Academic Assignments", "/students/academic-assignments", "graduation-cap"),
+  ]),
+  group("Attendance", "/attendance", "attendance", [
+    item("Daily Attendance", "/attendance", "attendance"),
+    item("Attendance History", "/attendance/history", "calendar"),
+    item("Attendance Reports", "/attendance/reports", "reports"),
+  ]),
+  group("Learning Planner", "/learning-planner", "planner", [
+    item("Overview", "/learning-planner", "dashboard"),
+    item("Calendar", "/learning-planner/calendar", "calendar"),
+    item("Class Schedule", "/learning-planner/schedules", "planner"),
+    item("Events", "/learning-planner/events", "planner"),
+    item("Notifications", "/learning-planner/notifications", "communication"),
+    item("Schedule History", "/learning-planner/history", "reports"),
+  ]),
+  group("Practice Work", "/practice-work", "homework", [
+    item("Overview", "/practice-work", "dashboard"),
+    item("Question Bank", "/practice-work/question-bank", "book-open"),
+    item("Generate Questions", "/practice-work/question-bank/generate", "homework"),
+    item("Question Templates", "/practice-work/templates", "academics"),
+    item("Generation History", "/practice-work/generations", "reports"),
+    item("Practice Sets", "/practice-work/sets", "report-card"),
+    item("Assignments", "/practice-work/assignments", "users"),
+    item("Student Attempts", "/practice-work/attempts", "marks"),
+    item("Analytics", "/practice-work/analytics", "reports"),
+  ]),
+  group("Fees", "/fees", "fees", [
+    item("Overview", "/fees", "dashboard"),
+    item("Fee Structures", "/fees/structures", "academics"),
+    item("Student Fees", "/fees/student-fees", "users"),
+    item("Collect Payment", "/fees/collect", "finance"),
+    item("Payments", "/fees/payments", "finance"),
+    item("Reports", "/fees/reports", "reports"),
+    item("WhatsApp Outbox", "/fees/messages", "communication"),
+    item("Settings", "/fees/settings", "settings"),
+  ]),
+  item("Dashboard", "/student/dashboard", "dashboard", ["Student"]),
+  item("My Practice Work", "/practice-work/my-work", "homework", ["Student"]),
+  item("My Schedule", "/student/schedule", "calendar", ["Student"]),
+  item("My Attendance", "/student/attendance", "attendance", ["Student"]),
+  item("My Fees", "/student/fees", "fees", ["Student"]),
+  item("Notifications", "/student/notifications", "communication", ["Student"]),
+  item("My Fees", "/parent/fees", "fees", ["Parent"]),
+  item("Logout", "/logout", "logout", allPortalRoles),
 ];
 
 export function getNavigationForRole(role: string | null): NavigationItem[] {
   if (!role) return [];
-
   return navigation
-    .filter((item) => item.roles.includes(role as NavigationRole))
-    .map((item) => ({
-      ...item,
-      children: item.children.filter((child) =>
+    .filter((navigationItem) => navigationItem.roles.includes(role as NavigationRole))
+    .map((navigationItem) => ({
+      ...navigationItem,
+      children: navigationItem.children.filter((child) =>
         child.roles.includes(role as NavigationRole)
       ),
     }));
 }
 
-export function getComingSoonSlug(item: NavigationItem): string {
-  return item.href.replace(/^\//, "").replaceAll("/", "--");
+export function getComingSoonSlug(navigationItem: NavigationItem): string {
+  return navigationItem.href.replace(/^\//, "").replaceAll("/", "--");
 }
 
-export function findNavigationItemBySlug(
-  slug: string
-): NavigationItem | null {
-  const items = navigation.flatMap((item) => [item, ...item.children]);
-  return items.find((item) => getComingSoonSlug(item) === slug) ?? null;
+export function findNavigationItemBySlug(slug: string): NavigationItem | null {
+  const items = navigation.flatMap((navigationItem) => [
+    navigationItem,
+    ...navigationItem.children,
+  ]);
+  return items.find((navigationItem) => getComingSoonSlug(navigationItem) === slug) ?? null;
 }
