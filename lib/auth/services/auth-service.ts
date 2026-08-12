@@ -5,15 +5,16 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeEmail } from "@/lib/validation/normalization";
 import type { AuthProfile, SupportedRole } from "@/features/auth/types/auth";
+import { normalizeApplicationRole, ROLE } from "@/lib/auth/roles";
 
 const ROLE_DESTINATIONS: Readonly<Record<SupportedRole, string>> = {
-  admin: "/dashboard",
-  "Super Admin": "/dashboard",
-  "Institute Admin": "/dashboard",
-  Student: "/student/dashboard",
-  Parent: "/parent/dashboard",
-  Staff: "/unauthorized",
-  Teacher: "/unauthorized",
+  [ROLE.ADMINISTRATOR]: "/dashboard",
+  [ROLE.SUPER_ADMIN]: "/dashboard",
+  [ROLE.INSTITUTE_ADMIN]: "/dashboard",
+  [ROLE.STUDENT]: "/student/dashboard",
+  [ROLE.PARENT]: "/parent/dashboard",
+  [ROLE.STAFF]: "/unauthorized",
+  [ROLE.TEACHER]: "/unauthorized",
 };
 
 interface ProfileRecord {
@@ -52,7 +53,7 @@ function toAuthProfile(record: ProfileRecord): AuthProfile {
     userId: record.user_id,
     email: record.email,
     name: record.name,
-    role: record.role ?? getRelatedRole(record.role_record),
+    role: normalizeApplicationRole(record.role ?? getRelatedRole(record.role_record)),
     isActive: record.is_active === true,
     instituteId: record.institute_id,
     branchId: record.branch_id,
@@ -63,8 +64,9 @@ function toAuthProfile(record: ProfileRecord): AuthProfile {
 }
 
 export function getRoleDestination(role: string | null): string {
-  if (role && role in ROLE_DESTINATIONS) {
-    return ROLE_DESTINATIONS[role as SupportedRole];
+  const normalizedRole = normalizeApplicationRole(role);
+  if (normalizedRole && normalizedRole in ROLE_DESTINATIONS) {
+    return ROLE_DESTINATIONS[normalizedRole];
   }
 
   return "/unauthorized";
@@ -133,7 +135,8 @@ export async function requireRole(
 ): Promise<AuthProfile> {
   const profile = await requireAuth();
 
-  if (!profile.role || !allowedRoles.includes(profile.role)) {
+  const allowed = allowedRoles.map(normalizeApplicationRole);
+  if (!profile.role || !allowed.includes(normalizeApplicationRole(profile.role))) {
     redirect("/unauthorized");
   }
 

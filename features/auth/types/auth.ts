@@ -1,12 +1,6 @@
-export const SUPPORTED_ROLES = [
-  "admin",
-  "Super Admin",
-  "Institute Admin",
-  "Student",
-  "Parent",
-  "Staff",
-  "Teacher",
-] as const;
+import { ROLE } from "@/lib/auth/roles";
+
+export const SUPPORTED_ROLES = Object.values(ROLE);
 
 export type SupportedRole = (typeof SUPPORTED_ROLES)[number];
 

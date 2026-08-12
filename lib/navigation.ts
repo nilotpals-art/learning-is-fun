@@ -1,13 +1,11 @@
-export const DASHBOARD_ROLES = [
-  "admin",
-  "Super Admin",
-  "Institute Admin",
-] as const;
+import { ADMINISTRATOR_ROLES, normalizeApplicationRole, ROLE } from "@/lib/auth/roles";
+
+export const DASHBOARD_ROLES = ADMINISTRATOR_ROLES;
 
 export type NavigationRole =
   | (typeof DASHBOARD_ROLES)[number]
-  | "Student"
-  | "Parent";
+  | typeof ROLE.STUDENT
+  | typeof ROLE.PARENT;
 
 export type NavigationIconName =
   | "dashboard"
@@ -44,8 +42,8 @@ export interface NavigationItem {
 
 const allPortalRoles: readonly NavigationRole[] = [
   ...DASHBOARD_ROLES,
-  "Student",
-  "Parent",
+  ROLE.STUDENT,
+  ROLE.PARENT,
 ];
 
 function item(
@@ -63,7 +61,8 @@ function group(
   icon: NavigationIconName,
   children: readonly NavigationItem[]
 ): NavigationItem {
-  return { title, href, icon, roles: DASHBOARD_ROLES, enabled: true, badge: null, children };
+  const roles = [...new Set(children.flatMap((child) => child.roles))];
+  return { title, href, icon, roles, enabled: true, badge: null, children };
 }
 
 export const navigation: readonly NavigationItem[] = [
@@ -121,6 +120,9 @@ export const navigation: readonly NavigationItem[] = [
     item("WhatsApp Outbox", "/fees/messages", "communication"),
     item("Settings", "/fees/settings", "settings"),
   ]),
+  group("Administration", "/administration/users", "settings", [
+    item("User Management", "/administration/users", "users", [ROLE.SUPER_ADMIN]),
+  ]),
   item("Dashboard", "/student/dashboard", "dashboard", ["Student"]),
   item("My Practice Work", "/practice-work/my-work", "homework", ["Student"]),
   item("My Schedule", "/student/schedule", "calendar", ["Student"]),
@@ -134,13 +136,14 @@ export const navigation: readonly NavigationItem[] = [
 ];
 
 export function getNavigationForRole(role: string | null): NavigationItem[] {
-  if (!role) return [];
+  const normalizedRole = normalizeApplicationRole(role);
+  if (!normalizedRole) return [];
   return navigation
-    .filter((navigationItem) => navigationItem.roles.includes(role as NavigationRole))
+    .filter((navigationItem) => navigationItem.roles.includes(normalizedRole as NavigationRole))
     .map((navigationItem) => ({
       ...navigationItem,
       children: navigationItem.children.filter((child) =>
-        child.roles.includes(role as NavigationRole)
+        child.roles.includes(normalizedRole as NavigationRole)
       ),
     }));
 }

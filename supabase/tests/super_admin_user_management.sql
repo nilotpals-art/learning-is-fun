@@ -1,0 +1,13 @@
+BEGIN;
+SELECT plan(10);
+SELECT results_eq($$SELECT role FROM public.profiles WHERE id='ea7cda27-2358-4fdd-a1ef-1dd3638ed29f'$$,ARRAY['Super Admin'],'bootstrap profile promoted');
+SELECT results_eq($$SELECT count(*)::bigint FROM public.profiles WHERE role='Super Admin'$$,ARRAY[1::bigint],'only one profile promoted');
+SELECT has_function('public','finalize_administrator_identity',ARRAY['uuid','text','text','text','uuid','boolean'],'finalize RPC exists');
+SELECT has_function('public','update_managed_administrator',ARRAY['uuid','text','text','uuid','boolean'],'update RPC exists');
+SELECT function_privs_are('public','finalize_administrator_identity',ARRAY['uuid','text','text','text','uuid','boolean'],'anon',ARRAY[]::text[],'anonymous denied');
+SELECT function_privs_are('public','finalize_administrator_identity',ARRAY['uuid','text','text','text','uuid','boolean'],'authenticated',ARRAY['EXECUTE'],'authenticated can invoke guarded RPC');
+SELECT results_eq($$SELECT institute_id FROM public.profiles WHERE id='ea7cda27-2358-4fdd-a1ef-1dd3638ed29f'$$,ARRAY['0dc9fd67-b180-4396-a5d0-a505e26d2f07'::uuid],'institute preserved');
+SELECT results_eq($$SELECT branch_id FROM public.profiles WHERE id='ea7cda27-2358-4fdd-a1ef-1dd3638ed29f'$$,ARRAY[NULL::uuid],'branch preserved');
+SELECT results_eq($$SELECT count(*)::bigint FROM public.roles WHERE name='Super Admin'$$,ARRAY[1::bigint],'role exists once');
+SELECT ok(NOT has_function_privilege('anon','public.update_managed_administrator(uuid,text,text,uuid,boolean)','execute'),'anonymous update denied');
+SELECT * FROM finish();ROLLBACK;

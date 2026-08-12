@@ -111,3 +111,12 @@ export async function deleteManagedAuthUser(id: string): Promise<void> {
     );
   }
 }
+
+export async function updateManagedAuthUserEmail(id: string, email: string): Promise<ManagedAuthUser> {
+  const client = adminClient();
+  const { data, error } = await client.auth.admin.updateUserById(id, { email: normalizeEmail(email), email_confirm: true });
+  if (error) throw new AdminAuthOperationError(error.code ?? "update_user_failed", error.status);
+  const user = normalizedUser(data.user);
+  if (!user) throw new AdminAuthOperationError("updated_user_has_no_email");
+  return user;
+}
