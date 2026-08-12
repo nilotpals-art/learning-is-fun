@@ -1,0 +1,4 @@
+import{Badge}from"@/components/ui/badge";import type{ResultIndicator}from"@/features/learning-planner/types/exam-result";
+export const RESULT_INDICATOR_LABELS:Record<ResultIndicator,string>={excellent:"Excellent",good:"Good",improvement_required:"Improvement Required",parent_call_required:"Parent Call Required",not_assessed:"Not Assessed"};
+const styles:Record<ResultIndicator,string>={excellent:"bg-emerald-100 text-emerald-800",good:"bg-blue-100 text-blue-800",improvement_required:"bg-amber-100 text-amber-900",parent_call_required:"bg-red-100 text-red-800",not_assessed:"bg-slate-100 text-slate-700"};
+export function ResultIndicatorBadge({value}:{value:ResultIndicator|null}){return value?<Badge className={styles[value]}>{RESULT_INDICATOR_LABELS[value]}</Badge>:<span className="text-muted-foreground">Not set</span>}

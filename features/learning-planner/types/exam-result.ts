@@ -1,0 +1,7 @@
+export type ExamResultStatus = "draft" | "published" | "superseded";
+export type ResultIndicator="excellent"|"good"|"improvement_required"|"parent_call_required"|"not_assessed";
+export type FollowUpStatus="pending"|"contacted"|"resolved";
+export interface ExamResultStudent { id:string; assignmentId:string; admissionNo:string; name:string; marksObtained:number; grade:string|null; remarks:string|null; resultIndicator:ResultIndicator|null; resultComment:string|null; followUpStatus:FollowUpStatus|null; percentage:number }
+export interface ExamResultSheet { id:string|null; eventId:string; title:string; examDate:string; academicYearName:string; batchName:string; className:string; subjectName:string|null; versionNo:number; maxMarks:number; status:ExamResultStatus|null; publishedAt:string|null; correctionReason:string|null; students:ExamResultStudent[]; highest:number|null; lowest:number|null; average:number|null }
+export interface PublishedStudentResult { resultSetId:string; eventId:string; title:string; examDate:string; subjectName:string|null; maxMarks:number; marksObtained:number; percentage:number; grade:string|null; remarks:string|null; resultIndicator:ResultIndicator|null; resultComment:string|null; highest:number; studentId:string; studentName:string; admissionNo:string }
+export type ExamResultActionResult={status:"success";message:string;id?:string}|{status:"error";message:string;fieldErrors?:Record<string,string[]>};

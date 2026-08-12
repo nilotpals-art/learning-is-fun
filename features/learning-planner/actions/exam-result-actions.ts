@@ -1,0 +1,10 @@
+"use server";
+import{revalidatePath}from"next/cache";
+import{eventIdSchema,saveExamResultSchema}from"@/features/learning-planner/schemas/exam-result-schema";
+import{publishExamResult,saveExamResultDraft}from"@/features/learning-planner/services/exam-result-service";
+import type{ExamResultActionResult}from"@/features/learning-planner/types/exam-result";
+import{requireRole}from"@/lib/auth/services/auth-service";import{DASHBOARD_ROLES}from"@/lib/navigation";
+const msg=(e:unknown)=>{const m=e instanceof Error?e.message:"";if(m.includes("EXAM_EVENT_INELIGIBLE"))return"Only an active Planner Exam event can accept results.";if(m.includes("EXAM_ROSTER_INCOMPLETE"))return"Enter marks for every eligible Student.";if(m.includes("EXAM_RESULT_INVALID"))return"Marks or Student eligibility is invalid.";if(m.includes("EXAM_CORRECTION_REASON_REQUIRED"))return"A correction reason is required.";return"We could not save the Exam Results."};
+const refresh=(id:string)=>{revalidatePath("/learning-planner/exam-results");revalidatePath(`/learning-planner/exam-results/${id}`);revalidatePath("/student/results");revalidatePath("/parent/results");revalidatePath("/student/dashboard")};
+export async function saveExamResultAction(input:unknown):Promise<ExamResultActionResult>{const p=saveExamResultSchema.safeParse(input);if(!p.success)return{status:"error",message:"Correct the highlighted result fields.",fieldErrors:p.error.flatten().fieldErrors};await requireRole(DASHBOARD_ROLES);try{const r=await saveExamResultDraft(p.data);refresh(p.data.eventId);return{status:"success",message:"Draft results saved.",id:r.result_set_id}}catch(e){return{status:"error",message:msg(e)}}}
+export async function publishExamResultAction(input:unknown):Promise<ExamResultActionResult>{const p=eventIdSchema.safeParse(input);if(!p.success)return{status:"error",message:"Invalid Planner Exam event."};await requireRole(DASHBOARD_ROLES);try{const r=await publishExamResult(p.data.eventId);refresh(p.data.eventId);return{status:"success",message:"Exam Results published.",id:r.result_set_id}}catch(e){return{status:"error",message:msg(e)}}}

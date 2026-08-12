@@ -17,6 +17,7 @@ import type {
   StudentDashboardData,
   StudentDashboardEvent,
 } from "@/features/student-dashboard/types/student-dashboard";
+import { ResultIndicatorBadge } from "@/features/learning-planner/components/result-indicator-badge";
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", weekday: "short" }).format(new Date(`${value}T00:00:00`));
@@ -98,6 +99,7 @@ export function StudentDashboard({ data }: { data: StudentDashboardData }) {
       </div>
 
       {data.holidays.length ? <Card className="border-amber-300 bg-amber-50/70 dark:bg-amber-950/20"><CardHeader><CardTitle>Holiday Calendar</CardTitle></CardHeader><CardContent className="space-y-2">{data.holidays.slice(0,4).map((holiday)=><p key={holiday.id} className="text-sm"><strong>Holiday: {holiday.name}</strong> · {formatDate(holiday.date)}</p>)}</CardContent></Card> : null}
+      {data.recentResults.length ? <Card><CardHeader className="flex-row items-center justify-between"><CardTitle>Recent Results</CardTitle><Button nativeButton={false} variant="outline" render={<Link href="/student/results"/>}>View All</Button></CardHeader><CardContent className="grid gap-3 md:grid-cols-3">{data.recentResults.slice(0,3).map(result=><article key={result.resultSetId} className="rounded-2xl border p-4"><p className="font-semibold">{result.title}</p><p className="mt-1 text-sm text-muted-foreground">{result.examDate} · {result.subjectName??"Subject"}</p><p className="my-3 text-xl font-bold">{result.marksObtained} / {result.maxMarks}</p><ResultIndicatorBadge value={result.resultIndicator}/></article>)}</CardContent></Card>:null}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>

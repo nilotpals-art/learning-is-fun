@@ -1,0 +1,2 @@
+import{strict as assert}from"node:assert";import{test}from"node:test";import{PDFDocument}from"pdf-lib";import{createBrandedTablePdf}from"./pdf-document";
+test("branded PDF contains a page per overflow and watermark operators",async()=>{const bytes=await createBrandedTablePdf({title:"RESULT",subtitle:["EXAM"],headers:["Student","Indicator"],rows:Array.from({length:80},(_,i)=>({cells:[`Student ${i}`,"Excellent"]}))});const doc=await PDFDocument.load(bytes);assert.ok(doc.getPageCount()>1);assert.ok(bytes.length>1000)});

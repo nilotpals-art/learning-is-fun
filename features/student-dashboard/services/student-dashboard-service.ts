@@ -5,6 +5,7 @@ import type { AttendanceTotals } from "@/features/attendance-reports/types/atten
 import { listScheduleEvents } from "@/features/learning-planner/services/event-service";
 import { getHolidayCalendar } from "@/features/learning-planner/services/holiday-service";
 import { listPlannerNotifications } from "@/features/learning-planner/services/notification-service";
+import { listPublishedResults } from "@/features/learning-planner/services/exam-result-service";
 import type { ScheduleEvent } from "@/features/learning-planner/types/learning-planner";
 import { getStudentQuote } from "@/features/student-dashboard/services/quote-service";
 import type {
@@ -175,13 +176,14 @@ export async function getStudentDashboardData(profile: AuthProfile): Promise<Stu
   const upcomingEnd = new Date(today);
   upcomingEnd.setDate(upcomingEnd.getDate() + 14);
 
-  const [eventsResult, practiceResult, attendanceResult, notificationsResult, quote, holidayResult] = await Promise.all([
+  const [eventsResult, practiceResult, attendanceResult, notificationsResult, quote, holidayResult, results] = await Promise.all([
     listScheduleEvents(profile, { dateFrom: dateValue(today), dateTo: dateValue(upcomingEnd), batchId: student.batchId ?? undefined }).catch(() => []),
     getPractice(profile, student).catch(() => ({ summary: { pending: 0, inProgress: 0, completed: 0, dueSoon: 0, overdue: 0, actionableItem: null }, progress: { submittedAttempts: 0, completedSets: 0, averagePercentage: null, latestPercentage: null, firstAttemptPercentage: null, retryImprovement: null } })),
     getAttendance(profile, student).catch(() => null),
     listPlannerNotifications(profile).catch(() => []),
     getStudentQuote(),
     getHolidayCalendar(profile, dateValue(today), dateValue(upcomingEnd)).catch(() => ({ holidays: [], providerAvailable: false })),
+    listPublishedResults(profile).catch(() => []),
   ]);
   const events = eventsResult.map(toDashboardEvent);
   const todayValue = dateValue(today);
@@ -203,6 +205,7 @@ export async function getStudentDashboardData(profile: AuthProfile): Promise<Stu
     upcomingEvents: learningEvents.filter((event) => event.eventDate > todayValue).slice(0, 6),
     notifications: notificationsResult.slice(0, 5).map((notification) => ({ recipientId: notification.recipientId, title: notification.title, message: notification.message, priority: notification.priority, readAt: notification.readAt, createdAt: notification.createdAt })),
     unreadNotifications: notificationsResult.filter((notification) => !notification.readAt).length,
+    recentResults: results.slice(0, 5),
   };
 }
 

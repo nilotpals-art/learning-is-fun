@@ -96,6 +96,7 @@ export const navigation: readonly NavigationItem[] = [
     item("Class Schedule", "/learning-planner/schedules", "planner"),
     item("Events", "/learning-planner/events", "planner"),
     item("Holiday Settings", "/learning-planner/holidays", "calendar"),
+    item("Exam Results", "/learning-planner/exam-results", "marks"),
     item("Notifications", "/learning-planner/notifications", "communication"),
     item("Schedule History", "/learning-planner/history", "reports"),
   ]),
@@ -124,9 +125,11 @@ export const navigation: readonly NavigationItem[] = [
   item("My Practice Work", "/practice-work/my-work", "homework", ["Student"]),
   item("My Schedule", "/student/schedule", "calendar", ["Student"]),
   item("My Attendance", "/student/attendance", "attendance", ["Student"]),
+  item("My Results", "/student/results", "marks", ["Student"]),
   item("My Fees", "/student/fees", "fees", ["Student"]),
   item("Notifications", "/student/notifications", "communication", ["Student"]),
   item("My Fees", "/parent/fees", "fees", ["Parent"]),
+  item("Results", "/parent/results", "marks", ["Parent"]),
   item("Logout", "/logout", "logout", allPortalRoles),
 ];
 

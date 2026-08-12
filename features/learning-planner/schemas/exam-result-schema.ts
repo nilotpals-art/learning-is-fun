@@ -1,0 +1,5 @@
+import {z} from "zod";
+const uuid=z.string().uuid();
+const indicator=z.enum(["excellent","good","improvement_required","parent_call_required","not_assessed"]);
+export const saveExamResultSchema=z.object({eventId:uuid,maxMarks:z.coerce.number().positive().max(100000),correctionReason:z.string().trim().max(500).optional().nullable(),results:z.array(z.object({studentId:uuid,studentAssignmentId:uuid,marksObtained:z.coerce.number().min(0),grade:z.string().trim().max(30).optional().nullable(),remarks:z.string().trim().max(500).optional().nullable(),resultIndicator:indicator.optional().nullable(),resultComment:z.string().trim().max(500).optional().nullable(),followUpStatus:z.enum(["pending","contacted","resolved"]).optional().nullable()}).superRefine((v,c)=>{if(v.followUpStatus&&v.resultIndicator!=="parent_call_required")c.addIssue({code:"custom",message:"Follow-up applies only to Parent Call Required.",path:["followUpStatus"]})})).min(1)});
+export const eventIdSchema=z.object({eventId:uuid});

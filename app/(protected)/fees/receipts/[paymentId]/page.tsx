@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { PrintWatermark } from "@/components/print/print-watermark";
 import { Card, CardContent } from "@/components/ui/card";
 import { listFeePayments } from "@/features/fees/services/fee-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
@@ -15,6 +16,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ paymen
   if (!payment) notFound();
   return (
     <div className="space-y-6">
+      <PrintWatermark instituteName={profile.instituteName} />
       <PageHeader title={`Receipt ${payment.receiptNo}`} description="Institute-scoped payment receipt" />
       <Card className="mx-auto max-w-2xl"><CardContent className="space-y-3 pt-6">
         <p><strong>Student:</strong> {payment.studentName}</p><p><strong>Academic Year:</strong> {payment.academicYearName}</p>

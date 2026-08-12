@@ -4,6 +4,7 @@ import type {
   ScheduleStatus,
   ScheduleType,
 } from "@/features/learning-planner/types/learning-planner";
+import type { PublishedStudentResult } from "@/features/learning-planner/types/exam-result";
 
 export interface StudentDashboardIdentity {
   id: string;
@@ -86,4 +87,5 @@ export interface StudentDashboardData {
   upcomingEvents: StudentDashboardEvent[];
   notifications: StudentDashboardNotification[];
   unreadNotifications: number;
+  recentResults: PublishedStudentResult[];
 }

@@ -1,0 +1,2 @@
+import{printWatermarkText}from"@/lib/print/branding";
+export function PrintWatermark({instituteName}:{instituteName?:string|null}){return <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 hidden items-center justify-center print:flex"><span className="-rotate-45 select-none whitespace-nowrap text-7xl font-bold text-black/10">{printWatermarkText(instituteName)}</span></div>}
