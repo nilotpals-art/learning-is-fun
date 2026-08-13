@@ -99,17 +99,7 @@ export const navigation: readonly NavigationItem[] = [
     item("Notifications", "/learning-planner/notifications", "communication"),
     item("Schedule History", "/learning-planner/history", "reports"),
   ]),
-  group("Practice Work", "/practice-work", "homework", [
-    item("Overview", "/practice-work", "dashboard"),
-    item("Question Bank", "/practice-work/question-bank", "book-open"),
-    item("Generate Questions", "/practice-work/question-bank/generate", "homework"),
-    item("Question Templates", "/practice-work/templates", "academics"),
-    item("Generation / Import History", "/practice-work/generations", "reports"),
-    item("Practice Sets", "/practice-work/sets", "report-card"),
-    item("Assignments", "/practice-work/assignments", "users"),
-    item("Student Attempts", "/practice-work/attempts", "marks"),
-    item("Analytics", "/practice-work/analytics", "reports"),
-  ]),
+  item("Practice Work", "/practice-work", "homework"),
   group("Fees", "/fees", "fees", [
     item("Overview", "/fees", "dashboard"),
     item("Fee Structures", "/fees/structures", "academics"),
