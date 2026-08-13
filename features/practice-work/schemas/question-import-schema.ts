@@ -1,0 +1,2 @@
+import { z } from "zod";
+export const questionImportMetadataSchema=z.object({boardId:z.string().uuid(),classId:z.string().uuid(),subjectId:z.string().uuid(),bookName:z.string().trim().max(150).optional().transform(v=>v?.toUpperCase()||undefined),chapter:z.string().trim().max(150).optional().transform(v=>v?.toUpperCase()||undefined),questionExamDate:z.union([z.string().date(),z.literal("")]).optional().transform(v=>v||undefined),sourceFullMarks:z.coerce.number().positive().max(1000)});

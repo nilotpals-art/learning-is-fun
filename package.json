@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:practice-imports": "node scripts/verify-practice-imports.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -18,11 +19,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "file-type": "21.3.4",
     "lucide-react": "^1.28.0",
+    "mammoth": "^1.11.0",
     "next": "16.3.0",
     "next-themes": "^0.4.6",
     "openai": "^7.4.0",
     "pdf-lib": "1.17.1",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.84.0",

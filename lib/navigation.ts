@@ -104,7 +104,7 @@ export const navigation: readonly NavigationItem[] = [
     item("Question Bank", "/practice-work/question-bank", "book-open"),
     item("Generate Questions", "/practice-work/question-bank/generate", "homework"),
     item("Question Templates", "/practice-work/templates", "academics"),
-    item("Generation History", "/practice-work/generations", "reports"),
+    item("Generation / Import History", "/practice-work/generations", "reports"),
     item("Practice Sets", "/practice-work/sets", "report-card"),
     item("Assignments", "/practice-work/assignments", "users"),
     item("Student Attempts", "/practice-work/attempts", "marks"),
