@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { extractQuestions } from "./document-extraction-service";
-import { validateQuestionImportFile } from "./question-import-file";
+import { QUESTION_IMPORT_MAX_BYTES, validateQuestionImportFile, validateQuestionImportMetadata } from "./question-import-file";
 
 async function createPdf() {
   const document = await PDFDocument.create();
@@ -64,3 +64,6 @@ test("SHA-256 fingerprint is stable for duplicate uploads", async () => {
   assert.equal(first.sha256, second.sha256);
   assert.match(first.sha256, /^[0-9a-f]{64}$/);
 });
+
+test("direct-upload metadata accepts Vercel-sized files through 15 MB",()=>{for(const size of [512*1024,3*1024*1024,5*1024*1024,QUESTION_IMPORT_MAX_BYTES])assert.doesNotThrow(()=>validateQuestionImportMetadata("questions.pdf","application/pdf",size));assert.throws(()=>validateQuestionImportMetadata("questions.pdf","application/pdf",QUESTION_IMPORT_MAX_BYTES+1),/FILE_TOO_LARGE/)});
+test("direct-upload metadata rejects invalid MIME and legacy DOC",()=>{assert.throws(()=>validateQuestionImportMetadata("questions.pdf","text/plain",100),/UNSUPPORTED_FILE_TYPE/);assert.throws(()=>validateQuestionImportMetadata("questions.doc","application/msword",100),/LEGACY_DOC_UNSUPPORTED/)});

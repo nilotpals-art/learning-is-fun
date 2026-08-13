@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateQuestionsAction, importQuestionsAction, retryQuestionExtractionAction, reviewGeneratedQuestionsAction, updateGeneratedQuestionAction } from "@/features/practice-work/actions/practice-work-actions";
+import { authorizeQuestionImportUploadAction, generateQuestionsAction, processUploadedQuestionImportAction, retryQuestionExtractionAction, reviewGeneratedQuestionsAction, updateGeneratedQuestionAction } from "@/features/practice-work/actions/practice-work-actions";
 import { DIFFICULTIES, type GeneratedQuestion, type GenerationReviewContext, type PracticeOptions, type QuestionTemplate } from "@/features/practice-work/types/practice-work";
+import { createClient } from "@/lib/supabase/client";
 
 interface Props { templates: QuestionTemplate[]; options: PracticeOptions; generationId?: string; generationContext?:GenerationReviewContext|null; questions: GeneratedQuestion[]; workspace?: boolean }
 
@@ -18,6 +19,7 @@ export function AiGenerationManager({ templates, options, generationId, generati
   const [message, setMessage] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<GeneratedQuestion | null>(null);
+  const [uploadState,setUploadState]=useState<"idle"|"uploading"|"uploaded"|"processing"|"review"|"failed">("idle");
   const reviewHref = (id: string) => workspace ? `/practice-work?generation=${id}#review` : `/practice-work/question-bank/generate?generation=${id}`;
   const review = (decision: "approve" | "reject", override = false) => start(async () => {
     if (!generationId) return;
@@ -38,6 +40,7 @@ export function AiGenerationManager({ templates, options, generationId, generati
     setMessage(result.message);
     if (result.data) router.push(reviewHref(result.data.generationId));
   };
+  const importFile=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();const form=new FormData(event.currentTarget),file=form.get("file");if(!(file instanceof File)||!file.size){setUploadState("failed");setMessage("Select a source file.");return}setUploadState("uploading");setMessage("Uploading…");const authorization=await authorizeQuestionImportUploadAction({filename:file.name,mimeType:file.type,byteSize:file.size});if(authorization.status==="error"||!authorization.data){setUploadState("failed");setMessage(authorization.message);return}const hash=await crypto.subtle.digest("SHA-256",await file.arrayBuffer()),clientSha256=Array.from(new Uint8Array(hash),byte=>byte.toString(16).padStart(2,"0")).join("");const upload=await createClient().storage.from("practice-work-private").uploadToSignedUrl(authorization.data.storagePath,authorization.data.uploadToken,file,{contentType:file.type});if(upload.error){setUploadState("failed");setMessage(`Upload failed: ${upload.error.message}`);return}setUploadState("uploaded");setMessage("Upload complete");setUploadState("processing");setMessage("Processing…");const result=await processUploadedQuestionImportAction({sourceId:authorization.data.sourceId,storagePath:authorization.data.storagePath,originalFilename:file.name,declaredMimeType:file.type,declaredByteSize:file.size,clientSha256,boardId:form.get("boardId"),classId:form.get("classId"),subjectId:form.get("subjectId"),bookName:form.get("bookName"),chapter:form.get("chapter"),questionExamDate:form.get("questionExamDate"),sourceFullMarks:form.get("sourceFullMarks")});if(result.status==="error"){setUploadState("failed");setMessage(result.message);if(result.data)router.push(reviewHref(result.data.generationId));return}setUploadState("review");goToReview(result)};
 
   return <div className="space-y-6">
     <Tabs defaultValue="ai">
@@ -52,10 +55,11 @@ export function AiGenerationManager({ templates, options, generationId, generati
         </form>
       </CardContent></Card></TabsContent>
       <TabsContent value="import"><Card><CardHeader><CardTitle>Import File</CardTitle></CardHeader><CardContent>
-        <form action={(form) => start(async () => goToReview(await importQuestionsAction(form)))} className="grid gap-4 md:grid-cols-3">
+        <form onSubmit={(event)=>start(()=>importFile(event))} className="grid gap-4 md:grid-cols-3">
           {common("import")}<label className="text-sm font-medium md:col-span-2">Source File<Input name="file" type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" /><span className="mt-1 block text-xs text-muted-foreground">Text PDFs and DOCX use native extraction. Scanned PDFs, JPEG and PNG use Gemini. Legacy DOC is unsupported.</span></label>
-          <div className="md:col-span-3"><Button disabled={pending}>Upload and Extract</Button></div>
+          <div className="md:col-span-3"><Button disabled={pending||uploadState==="uploading"||uploadState==="processing"}>Upload and Extract</Button></div>
         </form>
+        {uploadState!=="idle"?<p className="mt-3 text-sm font-medium" role="status">{{uploading:"Uploading…",uploaded:"Upload complete",processing:"Processing…",review:"Review required",failed:"Upload failed",idle:""}[uploadState]}</p>:null}
       </CardContent></Card></TabsContent>
     </Tabs>
     {message ? <p role="status" className="rounded-xl border p-3 text-sm">{message}</p> : null}
