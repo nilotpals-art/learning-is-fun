@@ -1,0 +1,16 @@
+BEGIN;
+SELECT plan(12);
+SELECT has_schema('exam_results_private','private helper schema exists');
+SELECT has_function('exam_results_private','can_student_view_result_set',ARRAY['uuid'],'student set helper exists');
+SELECT has_function('exam_results_private','can_parent_view_result_set',ARRAY['uuid'],'parent set helper exists');
+SELECT has_function('exam_results_private','can_student_view_result',ARRAY['uuid'],'student row helper exists');
+SELECT has_function('exam_results_private','can_parent_view_result',ARRAY['uuid'],'parent row helper exists');
+SELECT has_function('exam_results_private','can_admin_view_result_set',ARRAY['uuid','boolean'],'admin helper exists');
+SELECT function_privs_are('exam_results_private','can_student_view_result_set',ARRAY['uuid'],'anon',ARRAY[]::text[],'anonymous cannot execute helper');
+SELECT function_privs_are('exam_results_private','can_student_view_result_set',ARRAY['uuid'],'authenticated',ARRAY['EXECUTE'],'authenticated may execute helper');
+SELECT results_eq($$SELECT count(*)::bigint FROM pg_policies WHERE schemaname='public' AND tablename IN ('exam_result_sets','exam_student_results') AND coalesce(qual,'') LIKE '%exam_student_results r%'$$,ARRAY[0::bigint],'set policies no longer query result rows');
+SELECT results_eq($$SELECT count(*)::bigint FROM pg_policies WHERE schemaname='public' AND tablename='exam_student_results' AND coalesce(qual,'') LIKE '%exam_result_sets rs%'$$,ARRAY[0::bigint],'row policies no longer query result sets');
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.exam_result_sets'::regclass),'result-set RLS remains enabled');
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.exam_student_results'::regclass),'result-row RLS remains enabled');
+SELECT * FROM finish();
+ROLLBACK;
