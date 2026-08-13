@@ -11,9 +11,9 @@ import { AssignmentsManager } from "@/features/practice-work/components/assignme
 import { PracticeSetManager } from "@/features/practice-work/components/practice-set-manager";
 import { QuestionBankManager } from "@/features/practice-work/components/question-bank-manager";
 import { TemplatesManager } from "@/features/practice-work/components/templates-manager";
-import type { BankQuestion, GeneratedQuestion, PracticeAssignment, PracticeOptions, PracticeSet, QuestionTemplate } from "@/features/practice-work/types/practice-work";
+import type { BankQuestion, GeneratedQuestion, GenerationReviewContext, PracticeAssignment, PracticeOptions, PracticeSet, QuestionTemplate } from "@/features/practice-work/types/practice-work";
 
-interface Props { templates: QuestionTemplate[]; options: PracticeOptions | null; questions: BankQuestion[] | null; sets: PracticeSet[] | null; assignments: PracticeAssignment[] | null; generationId?: string; generatedQuestions: GeneratedQuestion[]; errors: { templates: string | null; options: string | null; questions: string | null; sets: string | null; assignments: string | null; generation: string | null } }
+interface Props { templates: QuestionTemplate[]; options: PracticeOptions | null; questions: BankQuestion[] | null; sets: PracticeSet[] | null; assignments: PracticeAssignment[] | null; generationId?: string; generationContext:GenerationReviewContext|null; generatedQuestions: GeneratedQuestion[]; errors: { templates: string | null; options: string | null; questions: string | null; sets: string | null; assignments: string | null; generation: string | null } }
 
 export function PracticeWorkspace(props: Props) {
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -23,7 +23,7 @@ export function PracticeWorkspace(props: Props) {
     <nav aria-label="Practice Work workflow" className="flex flex-wrap gap-2">{["create-questions", "review", "saved-questions", "create-practice-work", "existing-practice-work", "assign"].map((id, index) => <Button key={id} nativeButton={false} size="sm" variant="outline" render={<a href={`#${id}`} />}>{index + 1}. {id.replaceAll("-", " ")}</Button>)}</nav>
 
     <WorkspaceSection id="create-questions" number="1" title="Create Questions" description="Generate with AI or import a private source file into the shared draft-review workflow." actions={<><Button variant="outline" onClick={() => setTemplatesOpen(true)}>Manage Templates</Button><Button nativeButton={false} variant="outline" render={<Link href="/practice-work/generations" />}>Generation / Import History</Button></>}>
-      {props.errors.templates ? <SectionError message={props.errors.templates} /> : null}{props.errors.options ? <SectionError message={props.errors.options} /> : null}{props.options ? <AiGenerationManager templates={props.templates} options={props.options} generationId={props.generationId} questions={props.generatedQuestions} workspace /> : null}
+      {props.errors.templates ? <SectionError message={props.errors.templates} /> : null}{props.errors.options ? <SectionError message={props.errors.options} /> : null}{props.options ? <AiGenerationManager templates={props.templates} options={props.options} generationId={props.generationId} generationContext={props.generationContext} questions={props.generatedQuestions} workspace /> : null}
     </WorkspaceSection>
 
     {!props.generationId ? <WorkspaceSection id="review" number="2" title="Review Questions" description="Generated and imported drafts open here through the generation URL state."><Card><CardContent className="p-8 text-center text-muted-foreground">Create or reopen a generation to review its draft Questions.</CardContent></Card></WorkspaceSection> : props.errors.generation ? <WorkspaceSection id="review-error" number="2" title="Review Questions" description="The selected generation could not be loaded."><SectionError message={props.errors.generation} /></WorkspaceSection> : null}

@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateQuestionsAction, importQuestionsAction, reviewGeneratedQuestionsAction, updateGeneratedQuestionAction } from "@/features/practice-work/actions/practice-work-actions";
-import { DIFFICULTIES, type GeneratedQuestion, type PracticeOptions, type QuestionTemplate } from "@/features/practice-work/types/practice-work";
+import { generateQuestionsAction, importQuestionsAction, retryQuestionExtractionAction, reviewGeneratedQuestionsAction, updateGeneratedQuestionAction } from "@/features/practice-work/actions/practice-work-actions";
+import { DIFFICULTIES, type GeneratedQuestion, type GenerationReviewContext, type PracticeOptions, type QuestionTemplate } from "@/features/practice-work/types/practice-work";
 
-interface Props { templates: QuestionTemplate[]; options: PracticeOptions; generationId?: string; questions: GeneratedQuestion[]; workspace?: boolean }
+interface Props { templates: QuestionTemplate[]; options: PracticeOptions; generationId?: string; generationContext?:GenerationReviewContext|null; questions: GeneratedQuestion[]; workspace?: boolean }
 
-export function AiGenerationManager({ templates, options, generationId, questions, workspace = false }: Props) {
+export function AiGenerationManager({ templates, options, generationId, generationContext, questions, workspace = false }: Props) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const [message, setMessage] = useState("");
@@ -36,7 +36,7 @@ export function AiGenerationManager({ templates, options, generationId, question
   </>;
   const goToReview = (result: Awaited<ReturnType<typeof generateQuestionsAction>>) => {
     setMessage(result.message);
-    if (result.status === "success" && result.data) router.push(reviewHref(result.data.generationId));
+    if (result.data) router.push(reviewHref(result.data.generationId));
   };
 
   return <div className="space-y-6">
@@ -53,16 +53,17 @@ export function AiGenerationManager({ templates, options, generationId, question
       </CardContent></Card></TabsContent>
       <TabsContent value="import"><Card><CardHeader><CardTitle>Import File</CardTitle></CardHeader><CardContent>
         <form action={(form) => start(async () => goToReview(await importQuestionsAction(form)))} className="grid gap-4 md:grid-cols-3">
-          {common("import")}<label className="text-sm font-medium md:col-span-2">Source File<Input name="file" type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" /><span className="mt-1 block text-xs text-muted-foreground">Native PDF and DOCX extraction is available. Scanned PDF, JPEG and PNG semantic extraction requires the upcoming Gemini provider. Legacy DOC is unsupported.</span></label>
+          {common("import")}<label className="text-sm font-medium md:col-span-2">Source File<Input name="file" type="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" /><span className="mt-1 block text-xs text-muted-foreground">Text PDFs and DOCX use native extraction. Scanned PDFs, JPEG and PNG use Gemini. Legacy DOC is unsupported.</span></label>
           <div className="md:col-span-3"><Button disabled={pending}>Upload and Extract</Button></div>
         </form>
       </CardContent></Card></TabsContent>
     </Tabs>
     {message ? <p role="status" className="rounded-xl border p-3 text-sm">{message}</p> : null}
     {generationId ? <section id="review" className="scroll-mt-24 space-y-4">
-      <div><h3 className="text-xl font-semibold">Review Questions</h3><p className="text-sm text-muted-foreground">Edit drafts, resolve duplicate warnings, confirm marks, then approve or reject.</p></div>
+      <div><h3 className="text-xl font-semibold">Review Questions</h3><p className="text-sm text-muted-foreground">Edit drafts, resolve extraction and duplicate warnings, confirm answers and marks, then approve or reject.</p></div>
+      {generationContext?.status==="failed"?<div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><p>Extraction could not be completed. The private source file is retained, so you can retry without uploading it again.</p><Button className="mt-3" type="button" disabled={pending} onClick={()=>start(async()=>{const result=await retryQuestionExtractionAction({generationId:generationContext.id});setMessage(result.message);if(result.status==="success")router.refresh()})}>Retry Extraction</Button></div>:null}
       <div className="flex flex-wrap gap-2"><Button disabled={pending || !selected.length} onClick={() => review("approve")}>Approve Selected</Button><Button variant="outline" disabled={pending || !selected.length} onClick={() => review("approve", true)}>Approve Duplicate Override</Button><Button variant="destructive" disabled={pending || !selected.length} onClick={() => review("reject")}>Reject Selected</Button></div>
-      <p className="text-sm text-muted-foreground">Proposed total marks: {questions.reduce((sum, question) => sum + question.suggestedMarks, 0)}</p>
+      <p className="text-sm text-muted-foreground">Proposed total marks: {questions.reduce((sum, question) => sum + question.suggestedMarks, 0)}{generationContext?.sourceFullMarks!==null&&generationContext?.sourceFullMarks!==undefined?` / Source Full Marks: ${generationContext.sourceFullMarks} / Difference: ${questions.reduce((sum,question)=>sum+question.suggestedMarks,0)-generationContext.sourceFullMarks}`:""}</p>
       <div className="grid gap-4 lg:grid-cols-2">{questions.length ? questions.map((question) => <Card key={question.id}><CardContent className="space-y-3 p-5"><div className="flex items-start gap-3"><input aria-label={`Select ${question.questionText}`} type="checkbox" checked={selected.includes(question.id)} onChange={(event) => setSelected((value) => event.target.checked ? [...value, question.id] : value.filter((id) => id !== question.id))} /><div className="min-w-0 flex-1"><p className="font-semibold">{question.questionText}</p><p className="mt-2 text-sm">Answer: {String(question.correctAnswer)}</p><p className="text-sm text-muted-foreground">{question.explanation}</p><p className="mt-2 text-xs">{question.suggestedMarks} marks{question.sourcePage ? ` · Page ${question.sourcePage}` : ""}</p></div><Badge>{question.reviewStatus}</Badge></div>{question.duplicateWarning ? <p className="text-sm font-medium text-amber-700">Possible duplicate — review before approval.</p> : null}{question.reviewStatus === "pending" ? <Button type="button" size="sm" variant="outline" onClick={() => setEditing(question)}>Edit Draft</Button> : null}</CardContent></Card>) : <Card><CardContent className="p-8 text-center text-muted-foreground">No draft Questions were detected.</CardContent></Card>}</div>
     </section> : <section id="review" className="scroll-mt-24 rounded-2xl border border-dashed p-6"><h3 className="font-semibold">Review Questions</h3><p className="mt-1 text-sm text-muted-foreground">Generated or imported drafts appear here without leaving this workspace.</p></section>}
     {editing ? <Card><CardHeader><CardTitle>Edit Draft Question</CardTitle></CardHeader><CardContent><form action={(form) => start(async () => { const result = await updateGeneratedQuestionAction({ ...editing, questionText: form.get("questionText"), suggestedMarks: form.get("suggestedMarks"), explanation: form.get("explanation") }); setMessage(result.message); if (result.status === "success") { setEditing(null); router.refresh(); } })} className="grid gap-4"><label className="text-sm font-medium">Question<textarea name="questionText" defaultValue={editing.questionText} required className="mt-1 min-h-24 w-full rounded-xl border p-3" /></label><label className="text-sm font-medium">Suggested Answer / Explanation<textarea name="explanation" defaultValue={editing.explanation} className="mt-1 min-h-20 w-full rounded-xl border p-3" /></label><label className="text-sm font-medium">Marks<Input name="suggestedMarks" type="number" min="0.25" step="0.25" defaultValue={editing.suggestedMarks} /></label><div className="flex gap-2"><Button disabled={pending}>Save Draft</Button><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button></div></form></CardContent></Card> : null}
