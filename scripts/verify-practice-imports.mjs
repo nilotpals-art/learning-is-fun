@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 const directory = await mkdtemp(join(process.cwd(), ".practice-import-tests-"));
 try {
   await build({
-    entryPoints: ["features/practice-work/services/document-extraction-service.test.ts", "features/practice-work/services/gemini-document-extraction-provider.test.ts"],
+    entryPoints: ["features/practice-work/services/document-extraction-service.test.ts", "features/practice-work/services/gemini-document-extraction-provider.test.ts", "features/practice-work/services/gemini-question-generation-provider.test.ts"],
     outdir: directory,
     entryNames: "[name]",
     bundle: true,
@@ -18,6 +18,7 @@ try {
   });
   await import(pathToFileURL(join(directory,"document-extraction-service.test.js")));
   await import(pathToFileURL(join(directory,"gemini-document-extraction-provider.test.js")));
+  await import(pathToFileURL(join(directory,"gemini-question-generation-provider.test.js")));
 } finally {
   await rm(directory, { recursive: true, force: true });
 }
