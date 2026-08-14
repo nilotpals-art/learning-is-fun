@@ -22,22 +22,25 @@ test("Gemini Interactions accepts the documented minimal structured-output reque
   const response = await minimalClient.interactions.create({
     model: "gemini-3.6-flash",
     input: "Return a test value.",
-    response_format: {
-      type: "text",
-      mime_type: "application/json",
-      schema: {
-        type: "object",
-        properties: { value: { type: "string" } },
-        required: ["value"],
-        additionalProperties: false,
+    response_format: [
+      {
+        type: "text",
+        mime_type: "application/json",
+        schema: {
+          type: "object",
+          properties: { value: { type: "string" } },
+          required: ["value"],
+          additionalProperties: false,
+        },
       },
-    },
+    ],
   });
   assert.deepEqual(JSON.parse(response.output_text ?? ""), { value: "ok" });
-  const captured = request as { response_format: { type: string; mime_type: string; schema: unknown } };
-  assert.equal(captured.response_format.type, "text");
-  assert.equal(captured.response_format.mime_type, "application/json");
-  assert.ok(captured.response_format.schema);
+  const captured = request as { response_format: Array<{ type: string; mime_type: string; schema: unknown }> };
+  assert.equal(captured.response_format.length, 1);
+  assert.equal(captured.response_format[0].type, "text");
+  assert.equal(captured.response_format[0].mime_type, "application/json");
+  assert.ok(captured.response_format[0].schema);
 });
 
 test("Gemini question generation returns independently validated structured output", async () => {
@@ -50,12 +53,13 @@ test("Gemini question generation returns independently validated structured outp
   const serializedRequest = JSON.stringify(request);
   assert.equal(serializedRequest.includes("exclusiveMinimum"), false);
   assert.equal(serializedRequest.includes('"minimum":0.25'), true);
-  const captured = request as { model: string; input: string; response_format: { type: string; mime_type: string; schema: unknown } };
+  const captured = request as { model: string; input: string; response_format: Array<{ type: string; mime_type: string; schema: unknown }> };
   assert.equal(captured.model, "test-model");
   assert.match(captured.input, /Create remedial English practice questions/);
-  assert.equal(captured.response_format.type, "text");
-  assert.equal(captured.response_format.mime_type, "application/json");
-  assert.ok(captured.response_format.schema);
+  assert.equal(captured.response_format.length, 1);
+  assert.equal(captured.response_format[0].type, "text");
+  assert.equal(captured.response_format[0].mime_type, "application/json");
+  assert.ok(captured.response_format[0].schema);
   assert.equal(serializedRequest.includes("responseMimeType"), false);
   assert.equal(serializedRequest.includes("responseJsonSchema"), false);
 });
