@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GeminiQuestionGenerationProvider, type GeminiQuestionClient, validateGeneratedMarks } from "./gemini-question-generation-provider";
+import { DEFAULT_GEMINI_QUESTION_MODEL, GeminiQuestionGenerationProvider, type GeminiQuestionClient, validateGeneratedMarks } from "./gemini-question-generation-provider";
 
 const valid = { questions: [{ questionType: "mcq", questionText: "Choose the noun.", options: ["Run", "Book"], acceptedAnswers: null, correctAnswer: "Book", explanation: "Book names a thing.", difficulty: "beginner", suggestedMarks: 5, tags: ["noun"] }] };
 function client(value?: string, error?: unknown): GeminiQuestionClient { return { models: { generateContent: async () => { if (error) throw error; return { text: value }; } } }; }
@@ -12,6 +12,12 @@ test("Gemini question generation returns independently validated structured outp
   assert.equal(output.questions[0].correctAnswer, "Book");
   assert.equal(validateGeneratedMarks(output, 5), 5);
   assert.equal(provider.model, "test-model");
+});
+
+test("Gemini question generation uses the current default model", () => {
+  const provider = new GeminiQuestionGenerationProvider({ client: client(JSON.stringify(valid)) });
+  assert.equal(provider.model, "gemini-3.6-flash");
+  assert.equal(DEFAULT_GEMINI_QUESTION_MODEL, "gemini-3.6-flash");
 });
 
 test("Gemini question generation rejects a mismatched Full Marks total", () => {

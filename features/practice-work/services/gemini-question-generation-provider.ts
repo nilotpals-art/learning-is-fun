@@ -5,7 +5,7 @@ import type { z } from "zod";
 
 import { aiQuestionOutputSchema } from "@/features/practice-work/schemas/ai-generation-schema";
 
-export const DEFAULT_GEMINI_QUESTION_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_QUESTION_MODEL = "gemini-3.6-flash";
 const GENERATION_TIMEOUT_MS = 60_000;
 
 const questionOutputJsonSchema = {
@@ -115,7 +115,6 @@ export class GeminiQuestionGenerationProvider {
           responseMimeType: "application/json",
           responseJsonSchema: questionOutputJsonSchema,
           maxOutputTokens: 16_384,
-          temperature: 0,
         },
       });
       if (!response.text) throw new Error("GEMINI_GENERATION_INVALID_RESPONSE");
