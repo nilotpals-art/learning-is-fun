@@ -32,8 +32,8 @@ test("Gemini question generation rejects malformed structured output", async () 
   }
 });
 
-test("Gemini question generation classifies authentication, quota, and provider failures", async () => {
-  for (const [error, code] of [[{ status: 401 }, "GEMINI_GENERATION_AUTH_FAILED"], [{ status: 429 }, "GEMINI_GENERATION_QUOTA_EXCEEDED"], [new Error("network"), "GEMINI_GENERATION_PROVIDER_UNAVAILABLE"]] as const) {
+test("Gemini question generation classifies provider HTTP failures", async () => {
+  for (const [error, code] of [[Object.assign(new Error(JSON.stringify({ error: { code: 400, status: "INVALID_ARGUMENT", message: "Request rejected" } })), { status: 400 }), "GEMINI_GENERATION_REQUEST_REJECTED"], [{ status: 401 }, "GEMINI_GENERATION_AUTH_FAILED"], [{ status: 403 }, "GEMINI_GENERATION_PERMISSION_DENIED"], [{ status: 404 }, "GEMINI_GENERATION_MODEL_UNAVAILABLE"], [{ status: 429 }, "GEMINI_GENERATION_QUOTA_EXCEEDED"], [{ status: 500 }, "GEMINI_GENERATION_SERVICE_UNAVAILABLE"], [{ status: 503 }, "GEMINI_GENERATION_SERVICE_UNAVAILABLE"], [new Error("network"), "GEMINI_GENERATION_PROVIDER_UNAVAILABLE"]] as const) {
     const provider = new GeminiQuestionGenerationProvider({ client: client(undefined, error) });
     await assert.rejects(() => provider.generate({}), new RegExp(code));
   }

@@ -43,6 +43,50 @@ export interface GeminiQuestionClient {
 
 export type GeneratedQuestionOutput = z.infer<typeof aiQuestionOutputSchema>;
 
+type GeminiFailureCategory = "auth" | "permission" | "quota" | "model" | "request_validation" | "timeout" | "provider_failure";
+
+function errorDetails(error: unknown) {
+  const value = typeof error === "object" && error !== null ? error as Record<string, unknown> : {};
+  const rawErrorMessage = error instanceof Error ? error.message : "";
+  let parsedMessage: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(rawErrorMessage);
+    if (typeof parsed === "object" && parsed !== null) parsedMessage = parsed as Record<string, unknown>;
+  } catch { /* The SDK may return a plain-text provider message. */ }
+  const directNested = typeof value.error === "object" && value.error !== null ? value.error as Record<string, unknown> : {};
+  const parsedNested = typeof parsedMessage.error === "object" && parsedMessage.error !== null ? parsedMessage.error as Record<string, unknown> : {};
+  const nested = Object.keys(directNested).length ? directNested : parsedNested;
+  const httpStatus = typeof value.status === "number" ? value.status : typeof value.statusCode === "number" ? value.statusCode : undefined;
+  const geminiStatus = typeof nested.status === "string" ? nested.status : typeof value.status === "string" ? value.status : undefined;
+  const geminiCode = typeof nested.code === "number" || typeof nested.code === "string" ? nested.code : typeof value.code === "number" || typeof value.code === "string" ? value.code : undefined;
+  const rawMessage = typeof nested.message === "string" ? nested.message : rawErrorMessage || "Gemini provider request failed.";
+  const message = rawMessage
+    .replace(/([?&](?:key|api_key)=)[^&\s]+/gi, "$1[REDACTED]")
+    .replace(/\b(?:AIza|sk-)[A-Za-z0-9_-]{12,}\b/g, "[REDACTED]")
+    .slice(0, 500);
+  return { httpStatus, geminiStatus, geminiCode, message };
+}
+
+function classifyFailure(httpStatus: number | undefined, timedOut: boolean): GeminiFailureCategory {
+  if (timedOut) return "timeout";
+  if (httpStatus === 400) return "request_validation";
+  if (httpStatus === 401) return "auth";
+  if (httpStatus === 403) return "permission";
+  if (httpStatus === 404) return "model";
+  if (httpStatus === 429) return "quota";
+  return "provider_failure";
+}
+
+function providerErrorCode(httpStatus: number | undefined) {
+  if (httpStatus === 400) return "GEMINI_GENERATION_REQUEST_REJECTED";
+  if (httpStatus === 401) return "GEMINI_GENERATION_AUTH_FAILED";
+  if (httpStatus === 403) return "GEMINI_GENERATION_PERMISSION_DENIED";
+  if (httpStatus === 404) return "GEMINI_GENERATION_MODEL_UNAVAILABLE";
+  if (httpStatus === 429) return "GEMINI_GENERATION_QUOTA_EXCEEDED";
+  if (httpStatus === 500 || httpStatus === 503) return "GEMINI_GENERATION_SERVICE_UNAVAILABLE";
+  return "GEMINI_GENERATION_PROVIDER_UNAVAILABLE";
+}
+
 export class GeminiQuestionGenerationProvider {
   readonly model: string;
   private readonly client: GeminiQuestionClient;
@@ -81,12 +125,19 @@ export class GeminiQuestionGenerationProvider {
       if (!parsed.success) throw new Error("GEMINI_GENERATION_INVALID_RESPONSE");
       return parsed.data;
     } catch (error) {
-      if (controller.signal.aborted) throw new Error("GEMINI_GENERATION_TIMEOUT");
-      const status = (error as { status?: number }).status;
-      if (status === 401 || status === 403) throw new Error("GEMINI_GENERATION_AUTH_FAILED");
-      if (status === 429) throw new Error("GEMINI_GENERATION_QUOTA_EXCEEDED");
+      const timedOut = controller.signal.aborted;
+      const details = errorDetails(error);
+      console.error("Gemini question generation failed", {
+        model: this.model,
+        httpStatus: details.httpStatus ?? null,
+        geminiStatus: details.geminiStatus ?? null,
+        geminiCode: details.geminiCode ?? null,
+        message: details.message,
+        category: classifyFailure(details.httpStatus, timedOut),
+      });
+      if (timedOut) throw new Error("GEMINI_GENERATION_TIMEOUT");
       if (error instanceof Error && error.message.startsWith("GEMINI_GENERATION_")) throw error;
-      throw new Error("GEMINI_GENERATION_PROVIDER_UNAVAILABLE");
+      throw new Error(providerErrorCode(details.httpStatus));
     } finally {
       clearTimeout(timer);
     }
