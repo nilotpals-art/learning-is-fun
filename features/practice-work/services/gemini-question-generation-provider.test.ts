@@ -4,7 +4,41 @@ import test from "node:test";
 import { DEFAULT_GEMINI_QUESTION_MODEL, GeminiQuestionGenerationProvider, type GeminiQuestionClient, validateGeneratedMarks } from "./gemini-question-generation-provider";
 
 const valid = { questions: [{ questionType: "mcq", questionText: "Choose the noun.", options: ["Run", "Book"], acceptedAnswers: null, correctAnswer: "Book", explanation: "Book names a thing.", difficulty: "beginner", suggestedMarks: 5, tags: ["noun"] }] };
-function client(value?: string, error?: unknown, onInput?: (input: unknown) => void): GeminiQuestionClient { return { models: { generateContent: async (input) => { onInput?.(input); if (error) throw error; return { text: value, candidates: [{ finishReason: "STOP" }] }; } } }; }
+function client(value?: string, error?: unknown, onInput?: (input: unknown) => void): GeminiQuestionClient {
+  return {
+    interactions: {
+      create: async (input) => {
+        onInput?.(input);
+        if (error) throw error;
+        return { id: "interaction-test", status: "completed", output_text: value };
+      },
+    },
+  };
+}
+
+test("Gemini Interactions accepts the documented minimal structured-output request shape", async () => {
+  let request: unknown;
+  const minimalClient = client(JSON.stringify({ value: "ok" }), undefined, (input) => { request = input; });
+  const response = await minimalClient.interactions.create({
+    model: "gemini-3.6-flash",
+    input: "Return a test value.",
+    response_format: {
+      type: "text",
+      mime_type: "application/json",
+      schema: {
+        type: "object",
+        properties: { value: { type: "string" } },
+        required: ["value"],
+        additionalProperties: false,
+      },
+    },
+  });
+  assert.deepEqual(JSON.parse(response.output_text ?? ""), { value: "ok" });
+  const captured = request as { response_format: { type: string; mime_type: string; schema: unknown } };
+  assert.equal(captured.response_format.type, "text");
+  assert.equal(captured.response_format.mime_type, "application/json");
+  assert.ok(captured.response_format.schema);
+});
 
 test("Gemini question generation returns independently validated structured output", async () => {
   let request: unknown;
@@ -16,12 +50,14 @@ test("Gemini question generation returns independently validated structured outp
   const serializedRequest = JSON.stringify(request);
   assert.equal(serializedRequest.includes("exclusiveMinimum"), false);
   assert.equal(serializedRequest.includes('"minimum":0.25'), true);
-  const captured = request as { model: string; contents: Array<{ role: string; parts: Array<{ text: string }> }>; config: Record<string, unknown> & { responseMimeType: string; responseJsonSchema: unknown } };
+  const captured = request as { model: string; input: string; response_format: { type: string; mime_type: string; schema: unknown } };
   assert.equal(captured.model, "test-model");
-  assert.equal(captured.contents[0].role, "user");
-  assert.equal(captured.config.responseMimeType, "application/json");
-  assert.ok(captured.config.responseJsonSchema);
-  assert.equal("responseFormat" in captured.config, false);
+  assert.match(captured.input, /Create remedial English practice questions/);
+  assert.equal(captured.response_format.type, "text");
+  assert.equal(captured.response_format.mime_type, "application/json");
+  assert.ok(captured.response_format.schema);
+  assert.equal(serializedRequest.includes("responseMimeType"), false);
+  assert.equal(serializedRequest.includes("responseJsonSchema"), false);
 });
 
 test("Gemini question generation uses the current default model", () => {
@@ -64,6 +100,6 @@ test("Gemini question generation classifies provider HTTP failures", async () =>
 });
 
 test("Gemini question generation classifies timeouts", async () => {
-  const provider = new GeminiQuestionGenerationProvider({ timeoutMs: 1, client: { models: { generateContent: (input) => new Promise((_, reject) => { const signal=(input as {config:{abortSignal:AbortSignal}}).config.abortSignal;signal.addEventListener("abort",()=>reject(new Error("aborted")),{once:true}); }) } } });
+  const provider = new GeminiQuestionGenerationProvider({ timeoutMs: 1, client: { interactions: { create: (_input, options) => new Promise((_, reject) => { options?.fetchOptions?.signal?.addEventListener("abort",()=>reject(new Error("aborted")),{once:true}); }) } } });
   await assert.rejects(() => provider.generate({}), /GEMINI_GENERATION_TIMEOUT/);
 });
