@@ -4,14 +4,18 @@ import test from "node:test";
 import { DEFAULT_GEMINI_QUESTION_MODEL, GeminiQuestionGenerationProvider, type GeminiQuestionClient, validateGeneratedMarks } from "./gemini-question-generation-provider";
 
 const valid = { questions: [{ questionType: "mcq", questionText: "Choose the noun.", options: ["Run", "Book"], acceptedAnswers: null, correctAnswer: "Book", explanation: "Book names a thing.", difficulty: "beginner", suggestedMarks: 5, tags: ["noun"] }] };
-function client(value?: string, error?: unknown): GeminiQuestionClient { return { models: { generateContent: async () => { if (error) throw error; return { text: value }; } } }; }
+function client(value?: string, error?: unknown, onInput?: (input: unknown) => void): GeminiQuestionClient { return { models: { generateContent: async (input) => { onInput?.(input); if (error) throw error; return { text: value }; } } }; }
 
 test("Gemini question generation returns independently validated structured output", async () => {
-  const provider = new GeminiQuestionGenerationProvider({ client: client(JSON.stringify(valid)), model: "test-model" });
+  let request: unknown;
+  const provider = new GeminiQuestionGenerationProvider({ client: client(JSON.stringify(valid), undefined, (input) => { request = input; }), model: "test-model" });
   const output = await provider.generate({ sourceFullMarks: 5 });
   assert.equal(output.questions[0].correctAnswer, "Book");
   assert.equal(validateGeneratedMarks(output, 5), 5);
   assert.equal(provider.model, "test-model");
+  const serializedRequest = JSON.stringify(request);
+  assert.equal(serializedRequest.includes("exclusiveMinimum"), false);
+  assert.equal(serializedRequest.includes('"minimum":0.25'), true);
 });
 
 test("Gemini question generation uses the current default model", () => {

@@ -29,7 +29,7 @@ const questionOutputJsonSchema = {
           correctAnswer: { anyOf: [{ type: "string" }, { type: "boolean" }, { type: "array", items: { type: "string" } }] },
           explanation: { type: "string" },
           difficulty: { type: "string", enum: ["beginner", "intermediate", "advanced"] },
-          suggestedMarks: { type: "number", exclusiveMinimum: 0, maximum: 100 },
+          suggestedMarks: { type: "number", minimum: 0.25, maximum: 100 },
           tags: { type: "array", items: { type: "string" }, maxItems: 20 },
         },
       },
