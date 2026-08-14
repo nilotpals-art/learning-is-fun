@@ -41,8 +41,16 @@ test("Gemini question generation reports missing configuration", () => {
   finally { if (previous === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = previous; }
 });
 
+test("Gemini question generation accepts plain and strictly fenced JSON", async () => {
+  for (const value of [JSON.stringify(valid), `\`\`\`json\n${JSON.stringify(valid)}\n\`\`\``, `\`\`\`\n${JSON.stringify(valid)}\n\`\`\``]) {
+    const provider = new GeminiQuestionGenerationProvider({ client: client(value) });
+    const output = await provider.generate({});
+    assert.equal(output.questions.length, 1);
+  }
+});
+
 test("Gemini question generation distinguishes empty, invalid JSON, and schema mismatch responses", async () => {
-  for (const [value, code] of [[undefined, "GEMINI_GENERATION_EMPTY_RESPONSE"], ["not-json", "GEMINI_GENERATION_INVALID_JSON"], [JSON.stringify({ questions: [] }), "GEMINI_GENERATION_SCHEMA_MISMATCH"]] as const) {
+  for (const [value, code] of [[undefined, "GEMINI_GENERATION_EMPTY_RESPONSE"], [`Commentary\n${JSON.stringify(valid)}`, "GEMINI_GENERATION_INVALID_JSON"], [`${JSON.stringify(valid)}\nCommentary`, "GEMINI_GENERATION_INVALID_JSON"], ["not-json", "GEMINI_GENERATION_INVALID_JSON"], [JSON.stringify({ questions: [] }), "GEMINI_GENERATION_SCHEMA_MISMATCH"]] as const) {
     const provider = new GeminiQuestionGenerationProvider({ client: client(value) });
     await assert.rejects(() => provider.generate({}), new RegExp(code));
   }
