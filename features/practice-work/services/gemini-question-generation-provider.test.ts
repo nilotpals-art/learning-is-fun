@@ -4,7 +4,7 @@ import test from "node:test";
 import { DEFAULT_GEMINI_QUESTION_MODEL, GeminiQuestionGenerationProvider, type GeminiQuestionClient, validateGeneratedMarks } from "./gemini-question-generation-provider";
 
 const valid = { questions: [{ questionType: "mcq", questionText: "Choose the noun.", options: ["Run", "Book"], acceptedAnswers: null, correctAnswer: "Book", explanation: "Book names a thing.", difficulty: "beginner", suggestedMarks: 5, tags: ["noun"] }] };
-function client(value?: string, error?: unknown, onInput?: (input: unknown) => void): GeminiQuestionClient { return { models: { generateContent: async (input) => { onInput?.(input); if (error) throw error; return { text: value }; } } }; }
+function client(value?: string, error?: unknown, onInput?: (input: unknown) => void): GeminiQuestionClient { return { models: { generateContent: async (input) => { onInput?.(input); if (error) throw error; return { text: value, candidates: [{ finishReason: "STOP" }] }; } } }; }
 
 test("Gemini question generation returns independently validated structured output", async () => {
   let request: unknown;
@@ -42,10 +42,10 @@ test("Gemini question generation reports missing configuration", () => {
   finally { if (previous === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = previous; }
 });
 
-test("Gemini question generation rejects malformed structured output", async () => {
-  for (const value of ["not-json", JSON.stringify({ questions: [] })]) {
+test("Gemini question generation distinguishes empty, invalid JSON, and schema mismatch responses", async () => {
+  for (const [value, code] of [[undefined, "GEMINI_GENERATION_EMPTY_RESPONSE"], ["not-json", "GEMINI_GENERATION_INVALID_JSON"], [JSON.stringify({ questions: [] }), "GEMINI_GENERATION_SCHEMA_MISMATCH"]] as const) {
     const provider = new GeminiQuestionGenerationProvider({ client: client(value) });
-    await assert.rejects(() => provider.generate({}), /GEMINI_GENERATION_INVALID_RESPONSE/);
+    await assert.rejects(() => provider.generate({}), new RegExp(code));
   }
 });
 

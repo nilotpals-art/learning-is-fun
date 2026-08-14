@@ -38,7 +38,7 @@ const questionOutputJsonSchema = {
 } as const;
 
 export interface GeminiQuestionClient {
-  models: { generateContent(input: unknown): Promise<{ text?: string }> };
+  models: { generateContent(input: unknown): Promise<{ text?: string; candidates?: Array<{ finishReason?: string }> }> };
 }
 
 export type GeneratedQuestionOutput = z.infer<typeof aiQuestionOutputSchema>;
@@ -123,11 +123,29 @@ export class GeminiQuestionGenerationProvider {
           maxOutputTokens: 16_384,
         },
       });
-      if (!response.text) throw new Error("GEMINI_GENERATION_INVALID_RESPONSE");
+      const text = response.text;
+      const textLength = text?.length ?? 0;
+      console.info("Gemini question generation response", {
+        model: this.model,
+        hasText: Boolean(text),
+        textLength,
+        candidateCount: response.candidates?.length ?? 0,
+        finishReasons: response.candidates?.map((candidate) => candidate.finishReason ?? null) ?? [],
+      });
+      if (!text) throw new Error("GEMINI_GENERATION_EMPTY_RESPONSE");
       let value: unknown;
-      try { value = JSON.parse(response.text); } catch { throw new Error("GEMINI_GENERATION_INVALID_RESPONSE"); }
+      try { value = JSON.parse(text); } catch {
+        console.warn("Gemini question generation validation failed", { stage: "json_parse", textLength });
+        throw new Error("GEMINI_GENERATION_INVALID_JSON");
+      }
       const parsed = aiQuestionOutputSchema.safeParse(value);
-      if (!parsed.success) throw new Error("GEMINI_GENERATION_INVALID_RESPONSE");
+      if (!parsed.success) {
+        console.warn("Gemini question generation validation failed", {
+          stage: "schema_validation",
+          issues: parsed.error.issues.map((issue) => ({ path: issue.path, code: issue.code })),
+        });
+        throw new Error("GEMINI_GENERATION_SCHEMA_MISMATCH");
+      }
       return parsed.data;
     } catch (error) {
       const timedOut = controller.signal.aborted;
