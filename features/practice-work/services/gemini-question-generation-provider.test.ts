@@ -16,6 +16,13 @@ test("Gemini question generation returns independently validated structured outp
   const serializedRequest = JSON.stringify(request);
   assert.equal(serializedRequest.includes("exclusiveMinimum"), false);
   assert.equal(serializedRequest.includes('"minimum":0.25'), true);
+  const captured = request as { model: string; contents: Array<{ role: string; parts: Array<{ text: string }> }>; config: Record<string, unknown> & { responseFormat: { text: { mimeType: string; schema: unknown } } } };
+  assert.equal(captured.model, "test-model");
+  assert.equal(captured.contents[0].role, "user");
+  assert.equal(captured.config.responseFormat.text.mimeType, "application/json");
+  assert.ok(captured.config.responseFormat.text.schema);
+  assert.equal("responseMimeType" in captured.config, false);
+  assert.equal("responseJsonSchema" in captured.config, false);
 });
 
 test("Gemini question generation uses the current default model", () => {
