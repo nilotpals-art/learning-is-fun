@@ -114,12 +114,8 @@ export class GeminiQuestionGenerationProvider {
         ],
         config: {
           abortSignal: controller.signal,
-          responseFormat: {
-            text: {
-              mimeType: "application/json",
-              schema: questionOutputJsonSchema,
-            },
-          },
+          responseMimeType: "application/json",
+          responseJsonSchema: questionOutputJsonSchema,
           maxOutputTokens: 16_384,
         },
       });
