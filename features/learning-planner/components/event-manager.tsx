@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   cancelScheduleEventAction,
   completeScheduleEventAction,
@@ -49,10 +57,26 @@ function defaultWhatsapp(type: ScheduleType) {
   return ["extra_class", "mock_test", "exam", "parent_meeting", "holiday"].includes(type);
 }
 
+function effectiveEventStatus(event: ScheduleEvent) {
+  if (event.status !== "scheduled") return event.status;
+  if (!event.endTime) return event.status;
+  const endAt = new Date(`${event.eventDate}T${event.endTime}:00`);
+  if (Number.isNaN(endAt.getTime())) return event.status;
+  return endAt.getTime() < Date.now() ? "completed" : event.status;
+}
+
+function eventStatusTone(status: ScheduleEvent["status"]) {
+  if (status === "cancelled") return "bg-red-50 text-red-700 ring-1 ring-red-200";
+  if (status === "completed") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+  if (status === "rescheduled") return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+  return "bg-sky-50 text-sky-700 ring-1 ring-sky-200";
+}
+
 function eventLabel(event: ScheduleEvent) {
   if (event.reschedulePending) return "Cancelled · Reschedule Pending";
   if (event.scheduleType === "extra_class") return "Extra Class";
-  return event.status.charAt(0).toUpperCase() + event.status.slice(1);
+  const status = effectiveEventStatus(event);
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function EventDialog({
@@ -466,126 +490,127 @@ export function EventManager({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {events.map((event) => (
-            <Card
-              key={event.id}
-              className={
-                event.status === "cancelled"
-                  ? "border-destructive/40"
-                  : event.scheduleType === "extra_class"
-                    ? "border-sky-400/60"
-                    : ""
-              }
-            >
-              <CardHeader>
-                <div className="flex justify-between gap-3">
-                  <CardTitle>{event.title}</CardTitle>
-                  <Badge variant={event.status === "cancelled" ? "destructive" : "outline"}>
-                    {eventLabel(event)}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <p>
-                  {event.eventDate} · {event.startTime ?? "All day"}
-                  {event.endTime ? `–${event.endTime}` : ""}
-                </p>
-                <p>
-                  {event.batchName ?? "Institute-wide"} ·{" "}
-                  {event.subjectName ??
-                    (event.scheduleType === "exam"
-                      ? "General / Combined Assessment"
-                      : labels[event.scheduleType as keyof typeof labels] ??
-                        event.scheduleType.replaceAll("_", " "))}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {!event.isProjected && event.reschedulePending && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => setLifecycle({ event, kind: "replacement" })}
-                    >
-                      Schedule Replacement
-                    </Button>
-                  )}
-                  {event.status === "scheduled" && (
-                    <>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setLifecycle({ event, kind: "reschedule" })}
-                      >
-                        Reschedule
-                      </Button>
-                      {!event.isProjected && <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          start(async () => {
-                            await completeScheduleEventAction({ eventId: event.id });
-                            router.refresh();
-                          })
-                        }
-                        disabled={pending}
-                      >
-                        Complete
-                      </Button>}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => setLifecycle({ event, kind: "cancel" })}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  )}
-                  {event.scheduleType === "regular_class" && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setRelated(event);
-                        setCreateOpen(true);
-                      }}
-                    >
-                      Create Extra Class
-                    </Button>
-                  )}
-                  {event.isProjected ? (
-                    <Badge variant="outline">Derived from Batch timetable</Badge>
-                  ) : (
-                    <Button
-                      nativeButton={false}
-                      render={<Link href={`/learning-planner/history?event=${event.id}`} />}
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                    >
-                      View History
-                    </Button>
-                  )}
-                  {event.scheduleType === "exam" && (
-                    <Button
-                      nativeButton={false}
-                      render={
-                        <Link href={`/learning-planner/exam-results/${event.id}`} />
-                      }
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                    >
-                      View Results
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Event</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Batch / Subject</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {events.map((event) => {
+                const status = effectiveEventStatus(event);
+                const isCompleted = status === "completed";
+                const rowTone =
+                  event.status === "cancelled"
+                    ? "bg-red-50/70"
+                    : status === "completed"
+                      ? "bg-emerald-50/70"
+                      : status === "rescheduled"
+                        ? "bg-amber-50/70"
+                        : event.scheduleType === "extra_class"
+                          ? "bg-sky-50/70"
+                          : "bg-slate-50/40";
+                return (
+                  <TableRow key={event.id} className={rowTone}>
+                    <TableCell>
+                      <div className="font-medium">{event.title}</div>
+                      <div className="text-xs text-muted-foreground">{labels[event.scheduleType as keyof typeof labels] ?? event.scheduleType.replaceAll("_", " ")}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div>{event.eventDate}</div>
+                      <div className="text-xs text-muted-foreground">{event.startTime ?? "All day"}{event.endTime ? `–${event.endTime}` : ""}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div>{event.batchName ?? "Institute-wide"}</div>
+                      <div className="text-xs text-muted-foreground">{event.subjectName ?? "General / Combined Assessment"}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={eventStatusTone(status)} variant="secondary">
+                        {eventLabel(event)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {event.scheduleType === "regular_class" && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setRelated(event);
+                              setCreateOpen(true);
+                            }}
+                          >
+                            Extra Class
+                          </Button>
+                        )}
+                        {!event.isProjected && event.reschedulePending && (
+                          <Button type="button" size="sm" onClick={() => setLifecycle({ event, kind: "replacement" })}>
+                            Reschedule
+                          </Button>
+                        )}
+                        {!isCompleted && event.status === "scheduled" && (
+                          <>
+                            <Button type="button" size="sm" variant="outline" onClick={() => setLifecycle({ event, kind: "reschedule" })}>
+                              Reschedule
+                            </Button>
+                            {!event.isProjected && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  start(async () => {
+                                    await completeScheduleEventAction({ eventId: event.id });
+                                    router.refresh();
+                                  })
+                                }
+                                disabled={pending}
+                              >
+                                Complete
+                              </Button>
+                            )}
+                            <Button type="button" size="sm" variant="destructive" onClick={() => setLifecycle({ event, kind: "cancel" })}>
+                              Cancel
+                            </Button>
+                          </>
+                        )}
+                        {event.isProjected ? (
+                          <Badge variant="outline">Derived</Badge>
+                        ) : (
+                          <Button
+                            nativeButton={false}
+                            render={<Link href={`/learning-planner/history?event=${event.id}`} />}
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                          >
+                            History
+                          </Button>
+                        )}
+                        {event.scheduleType === "exam" && (
+                          <Button
+                            nativeButton={false}
+                            render={<Link href={`/learning-planner/exam-results/${event.id}`} />}
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                          >
+                            Results
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
       <EventDialog
