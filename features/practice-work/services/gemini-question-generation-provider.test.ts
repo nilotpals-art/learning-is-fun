@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DEFAULT_GEMINI_QUESTION_MODEL, GeminiQuestionGenerationProvider, type GeminiQuestionClient, validateGeneratedMarks } from "./gemini-question-generation-provider";
+import { DEFAULT_GEMINI_QUESTION_MODEL, GEMINI_INTERACTIONS_API_VERSION, GeminiQuestionGenerationProvider, type GeminiQuestionClient, validateGeneratedMarks } from "./gemini-question-generation-provider";
 
 const valid = { questions: [{ questionType: "mcq", questionText: "Choose the noun.", options: ["Run", "Book"], acceptedAnswers: null, correctAnswer: "Book", explanation: "Book names a thing.", difficulty: "beginner", suggestedMarks: 5, tags: ["noun"] }] };
 function client(value?: string, error?: unknown, onInput?: (input: unknown) => void): GeminiQuestionClient {
@@ -68,6 +68,19 @@ test("Gemini question generation uses the current default model", () => {
   const provider = new GeminiQuestionGenerationProvider({ client: client(JSON.stringify(valid)) });
   assert.equal(provider.model, "gemini-3.6-flash");
   assert.equal(DEFAULT_GEMINI_QUESTION_MODEL, "gemini-3.6-flash");
+});
+
+test("Gemini question generation configures Interactions for API v1", () => {
+  let configuredVersion: string | undefined;
+  new GeminiQuestionGenerationProvider({
+    apiKey: "test-key",
+    clientFactory: (options) => {
+      configuredVersion = options.httpOptions.apiVersion;
+      return client(JSON.stringify(valid));
+    },
+  });
+  assert.equal(configuredVersion, "v1");
+  assert.equal(GEMINI_INTERACTIONS_API_VERSION, "v1");
 });
 
 test("Gemini question generation rejects a mismatched Full Marks total", () => {

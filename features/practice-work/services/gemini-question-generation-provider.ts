@@ -7,6 +7,7 @@ import { aiQuestionOutputSchema } from "@/features/practice-work/schemas/ai-gene
 import { normalizeStructuredJson } from "@/features/practice-work/services/gemini-structured-json";
 
 export const DEFAULT_GEMINI_QUESTION_MODEL = "gemini-3.6-flash";
+export const GEMINI_INTERACTIONS_API_VERSION = "v1";
 const GENERATION_TIMEOUT_MS = 60_000;
 
 const questionOutputJsonSchema = {
@@ -45,6 +46,11 @@ export interface GeminiQuestionClient {
       options?: { timeout?: number; fetchOptions?: { signal?: AbortSignal } },
     ): Promise<{ id?: string; status?: string; output_text?: string }>;
   };
+}
+
+interface GeminiQuestionClientOptions {
+  apiKey: string;
+  httpOptions: { apiVersion: string };
 }
 
 export type GeneratedQuestionOutput = z.infer<typeof aiQuestionOutputSchema>;
@@ -98,11 +104,12 @@ export class GeminiQuestionGenerationProvider {
   private readonly client: GeminiQuestionClient;
   private readonly timeoutMs: number;
 
-  constructor(options?: { apiKey?: string; model?: string; client?: GeminiQuestionClient; timeoutMs?: number }) {
+  constructor(options?: { apiKey?: string; model?: string; client?: GeminiQuestionClient; clientFactory?: (options: GeminiQuestionClientOptions) => GeminiQuestionClient; timeoutMs?: number }) {
     const apiKey = options?.apiKey ?? process.env.GEMINI_API_KEY?.trim();
     if (!apiKey && !options?.client) throw new Error("GEMINI_GENERATION_NOT_CONFIGURED");
     this.model = options?.model ?? (process.env.GEMINI_QUESTION_MODEL?.trim() || DEFAULT_GEMINI_QUESTION_MODEL);
-    this.client = options?.client ?? new GoogleGenAI({ apiKey: apiKey! });
+    const clientOptions = { apiKey: apiKey!, httpOptions: { apiVersion: GEMINI_INTERACTIONS_API_VERSION } };
+    this.client = options?.client ?? options?.clientFactory?.(clientOptions) ?? new GoogleGenAI(clientOptions);
     this.timeoutMs = options?.timeoutMs ?? GENERATION_TIMEOUT_MS;
   }
 
