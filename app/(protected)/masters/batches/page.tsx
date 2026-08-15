@@ -13,8 +13,8 @@ export default async function BatchesPage() {
   if (!profile.instituteId) redirect("/unauthorized");
 
   const [batches, options] = await Promise.all([
-    listBatches(profile.instituteId),
-    listBatchFormOptions(profile.instituteId),
+    listBatches(profile),
+    listBatchFormOptions(profile),
   ]);
   return <BatchesManager batches={batches} options={options} />;
 }

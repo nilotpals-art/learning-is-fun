@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlannerShell } from "@/features/learning-planner/components/planner-shell";
-import { listScheduleChanges, listScheduleEvents } from "@/features/learning-planner/services/event-service";
+import { listCalendarReadModel } from "@/features/learning-planner/services/calendar-projection-service";
+import { listScheduleChanges } from "@/features/learning-planner/services/event-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 
 export default async function LearningPlannerPage() {
   const profile = await requireRole(DASHBOARD_ROLES); if (!profile.instituteId) redirect("/unauthorized");
   const today = new Date().toISOString().slice(0, 10);
-  const [events, changes] = await Promise.all([listScheduleEvents(profile, { dateFrom: today }), listScheduleChanges(profile)]);
+  const end = new Date(); end.setDate(end.getDate() + 90);
+  const [events, changes] = await Promise.all([listCalendarReadModel(profile, today, end.toISOString().slice(0, 10)), listScheduleChanges(profile)]);
   const cards = [
     { label: "Classes Today", value: events.filter((event) => event.eventDate === today && event.status === "scheduled").length },
     { label: "Upcoming Events", value: events.length },

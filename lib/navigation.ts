@@ -90,14 +90,12 @@ export const navigation: readonly NavigationItem[] = [
     item("Attendance Reports", "/attendance/reports", "reports"),
   ]),
   group("Learning Planner", "/learning-planner", "planner", [
-    item("Overview", "/learning-planner", "dashboard"),
     item("Calendar", "/learning-planner/calendar", "calendar"),
-    item("Class Schedule", "/learning-planner/schedules", "planner"),
-    item("Events", "/learning-planner/events", "planner"),
-    item("Holiday Settings", "/learning-planner/holidays", "calendar"),
+    item("Recurring Schedules", "/learning-planner/schedules", "planner"),
     item("Exam Results", "/learning-planner/exam-results", "marks"),
+    item("Holidays", "/learning-planner/holidays", "calendar"),
     item("Notifications", "/learning-planner/notifications", "communication"),
-    item("Schedule History", "/learning-planner/history", "reports"),
+    item("History", "/learning-planner/history", "reports"),
   ]),
   item("Practice Work", "/practice-work", "homework"),
   group("Fees", "/fees", "fees", [

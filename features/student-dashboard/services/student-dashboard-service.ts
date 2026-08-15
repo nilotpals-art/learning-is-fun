@@ -2,7 +2,7 @@ import "server-only";
 
 import type { AuthProfile } from "@/features/auth/types/auth";
 import type { AttendanceTotals } from "@/features/attendance-reports/types/attendance-report";
-import { listScheduleEvents } from "@/features/learning-planner/services/event-service";
+import { listCalendarReadModel } from "@/features/learning-planner/services/calendar-projection-service";
 import { getHolidayCalendar } from "@/features/learning-planner/services/holiday-service";
 import { listPlannerNotifications } from "@/features/learning-planner/services/notification-service";
 import { listPublishedResults } from "@/features/learning-planner/services/exam-result-service";
@@ -26,6 +26,11 @@ interface AssignmentRow {
   batch: { name: string } | { name: string }[];
   board: { name: string } | { name: string }[];
   academic_class: { class_name: string } | { class_name: string }[];
+}
+interface AssignmentWindowRow {
+  batch_id: string;
+  effective_from: string;
+  effective_to: string | null;
 }
 interface PracticeAssignmentRow {
   id: string;
@@ -61,6 +66,63 @@ function toDashboardEvent(event: ScheduleEvent): StudentDashboardEvent {
     scheduleType: event.scheduleType,
     status: event.status,
   };
+}
+
+async function getAssignmentWindows(
+  profile: AuthProfile,
+  studentId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<Map<string, Array<{ fromDate: string; toDate: string }>>> {
+  if (!profile.instituteId) throw new Error("STUDENT_DASHBOARD_UNAUTHORIZED");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("student_assignments")
+    .select("batch_id,effective_from,effective_to")
+    .eq("student_id", studentId)
+    .eq("institute_id", profile.instituteId)
+    .lte("effective_from", toDate)
+    .or(`effective_to.is.null,effective_to.gte.${fromDate}`);
+  if (error) throw error;
+
+  const windows = new Map<
+    string,
+    Array<{ fromDate: string; toDate: string }>
+  >();
+  for (const assignment of (data ?? []) as AssignmentWindowRow[]) {
+    const batchWindows = windows.get(assignment.batch_id) ?? [];
+    batchWindows.push({
+      fromDate: assignment.effective_from > fromDate ? assignment.effective_from : fromDate,
+      toDate:
+        assignment.effective_to && assignment.effective_to < toDate
+          ? assignment.effective_to
+          : toDate,
+    });
+    windows.set(assignment.batch_id, batchWindows);
+  }
+  return windows;
+}
+
+async function getStudentCalendar(
+  profile: AuthProfile,
+  studentId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<ScheduleEvent[]> {
+  const windows = await getAssignmentWindows(profile, studentId, fromDate, toDate);
+  if (windows.size === 0) return [];
+  const events = await listCalendarReadModel(profile, fromDate, toDate, windows);
+  return events.filter(
+    (event) =>
+      event.scheduleType === "holiday" ||
+      (event.batchId !== null &&
+        windows
+          .get(event.batchId)
+          ?.some(
+            (window) =>
+              event.eventDate >= window.fromDate && event.eventDate <= window.toDate,
+          )),
+  );
 }
 
 async function getIdentity(profile: AuthProfile): Promise<StudentDashboardIdentity> {
@@ -177,7 +239,7 @@ export async function getStudentDashboardData(profile: AuthProfile): Promise<Stu
   upcomingEnd.setDate(upcomingEnd.getDate() + 14);
 
   const [eventsResult, practiceResult, attendanceResult, notificationsResult, quote, holidayResult, results] = await Promise.all([
-    listScheduleEvents(profile, { dateFrom: dateValue(today), dateTo: dateValue(upcomingEnd), batchId: student.batchId ?? undefined }).catch(() => []),
+    getStudentCalendar(profile, student.id, dateValue(today), dateValue(upcomingEnd)).catch(() => []),
     getPractice(profile, student).catch(() => ({ summary: { pending: 0, inProgress: 0, completed: 0, dueSoon: 0, overdue: 0, actionableItem: null }, progress: { submittedAttempts: 0, completedSets: 0, averagePercentage: null, latestPercentage: null, firstAttemptPercentage: null, retryImprovement: null } })),
     getAttendance(profile, student).catch(() => null),
     listPlannerNotifications(profile).catch(() => []),
@@ -214,7 +276,9 @@ export async function getStudentSchedule(profile: AuthProfile): Promise<StudentD
   const from = new Date();
   const to = new Date(from);
   to.setDate(to.getDate() + 30);
-  return (await listScheduleEvents(profile, { dateFrom: dateValue(from), dateTo: dateValue(to), batchId: student.batchId ?? undefined })).filter((event)=>event.scheduleType!=="holiday").map(toDashboardEvent);
+  return (await getStudentCalendar(profile, student.id, dateValue(from), dateValue(to)))
+    .filter((event) => event.scheduleType !== "holiday")
+    .map(toDashboardEvent);
 }
 
 export async function getStudentScheduleHolidays(profile:AuthProfile):Promise<StudentHoliday[]>{const from=new Date();const to=new Date(from);to.setDate(to.getDate()+30);const calendar=await getHolidayCalendar(profile,dateValue(from),dateValue(to));return calendar.holidays.filter(holiday=>holiday.observedAsHoliday!==false).map(holiday=>({id:holiday.id,name:holiday.name,date:holiday.date,scope:holiday.scope}));}

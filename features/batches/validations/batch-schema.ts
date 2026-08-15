@@ -1,39 +1,10 @@
 import { z } from "zod";
 import { normalizeUpperText } from "@/lib/validation/normalization";
-
-const optionalUuid = (message: string) =>
-  z
-    .string()
-    .refine((value) => value === "" || z.string().uuid().safeParse(value).success, message);
-
-const optionalTime = z
-  .string()
-  .trim()
-  .refine(
-    (value) => value === "" || /^([01]\d|2[0-3]):[0-5]\d$/.test(value),
-    "Enter a valid time."
-  );
-
-export const batchSchema = z.object({
-  name: z.string().trim().min(1, "Batch Name is required.").transform(normalizeUpperText),
-  teacherId: optionalUuid("Invalid Teacher."),
-  boardId: optionalUuid("Invalid Board."),
-  classId: optionalUuid("Invalid Class."),
-  subjectId: optionalUuid("Invalid Subject."),
-  startTime: optionalTime,
-  endTime: optionalTime,
-  days: z.string().trim().transform(normalizeUpperText),
-  capacity: z
-    .string()
-    .trim()
-    .refine(
-      (value) => value === "" || /^\d+$/.test(value),
-      "Capacity must be a whole number of zero or greater."
-    ),
-  room: z.string().trim().transform(normalizeUpperText),
-  isActive: z.boolean(),
-});
-
-export const batchIdSchema = z.string().uuid("Invalid Batch.");
-
-export type BatchFormValues = z.infer<typeof batchSchema>;
+const uuid=z.string().uuid();
+const time=z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/,"Enter a valid time.");
+export const batchScheduleGroupSchema=z.object({days:z.array(z.coerce.number().int().min(1).max(7)).min(1,"Select at least one class day."),startTime:time,endTime:time}).superRefine((value,ctx)=>{if(value.endTime<=value.startTime)ctx.addIssue({code:"custom",path:["endTime"],message:"End time must be after start time."});});
+export const batchSchema=z.object({academicYearId:uuid,branchId:z.union([uuid,z.literal("")]).optional().transform(v=>v||undefined),boardId:uuid,classId:uuid,subjectId:uuid,name:z.string().trim().min(1,"Batch Name is required.").max(100).transform(normalizeUpperText),effectiveFrom:z.string().date(),schedules:z.array(batchScheduleGroupSchema).min(1,"Add at least one Class Schedule."),overlapReason:z.string().trim().max(500).optional().transform(v=>v?normalizeUpperText(v):undefined)}).superRefine((value,ctx)=>{const rows=value.schedules.flatMap((group,index)=>group.days.map(day=>({index,day,start:group.startTime,end:group.endTime})));for(let left=0;left<rows.length;left++)for(let right=left+1;right<rows.length;right++){const a=rows[left],b=rows[right];if(a.day!==b.day)continue;if(a.start===b.start&&a.end===b.end)ctx.addIssue({code:"custom",path:["schedules",b.index,"root"],message:"Duplicate schedule rows are not allowed."});else if(a.start<b.end&&a.end>b.start)ctx.addIssue({code:"custom",path:["schedules",b.index,"root"],message:"Schedule groups for this Batch cannot overlap."});}});
+export const batchIdSchema=uuid;
+export const batchTimetableSchema=z.object({batchId:uuid,effectiveFrom:z.string().date(),schedules:z.array(batchScheduleGroupSchema).min(1),overlapReason:z.string().trim().max(500).optional()}).superRefine((value,ctx)=>{const rows=value.schedules.flatMap((group,index)=>group.days.map(day=>({index,day,start:group.startTime,end:group.endTime})));for(let left=0;left<rows.length;left++)for(let right=left+1;right<rows.length;right++){const a=rows[left],b=rows[right];if(a.day!==b.day)continue;if(a.start===b.start&&a.end===b.end)ctx.addIssue({code:"custom",path:["schedules",b.index,"root"],message:"Duplicate schedule rows are not allowed."});else if(a.start<b.end&&a.end>b.start)ctx.addIssue({code:"custom",path:["schedules",b.index,"root"],message:"Schedule groups for this Batch cannot overlap."});}});
+export type BatchFormValues=z.infer<typeof batchSchema>;
+export type BatchTimetableValues=z.infer<typeof batchTimetableSchema>;

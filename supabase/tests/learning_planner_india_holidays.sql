@@ -1,15 +1,15 @@
--- Transactional schema, RLS, tenant, and deterministic materialization checks.
+-- Transactional schema, RLS, tenant, and projection-policy checks.
 BEGIN;
 
 DO $$
 DECLARE
   v_admin public.profiles%ROWTYPE; v_other public.profiles%ROWTYPE;
   v_year public.academic_years%ROWTYPE; v_batch public.batches%ROWTYPE; v_subject public.subjects%ROWTYPE;
-  v_schedule uuid; v_holiday uuid; v_result jsonb; v_date date;
+  v_schedule uuid; v_holiday uuid; v_date date;
 BEGIN
   IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.learning_planner_holiday_settings'::regclass) THEN RAISE EXCEPTION 'Settings RLS is disabled'; END IF;
   IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.learning_planner_public_holidays'::regclass) THEN RAISE EXCEPTION 'Holiday RLS is disabled'; END IF;
-  IF position('learning_planner_public_holidays' in (SELECT prosrc FROM pg_proc WHERE oid='public.generate_schedule_events(date,date,uuid,uuid)'::regprocedure))=0 THEN RAISE EXCEPTION 'Materialization does not use durable holidays'; END IF;
+  IF has_function_privilege('authenticated','public.generate_schedule_events(date,date,uuid,uuid)','EXECUTE') THEN RAISE EXCEPTION 'Routine materialization remains enabled'; END IF;
   SELECT * INTO v_admin FROM public.profiles WHERE is_active IS TRUE AND role IN ('admin','Super Admin','Institute Admin') AND institute_id IS NOT NULL ORDER BY created_at LIMIT 1;
   IF v_admin.id IS NULL THEN RAISE EXCEPTION 'Test requires an active administrator'; END IF;
   SELECT * INTO v_other FROM public.profiles WHERE institute_id<>v_admin.institute_id AND is_active IS TRUE ORDER BY created_at LIMIT 1;
@@ -22,11 +22,11 @@ BEGIN
   INSERT INTO public.class_schedules(institute_id,academic_year_id,batch_id,subject_id,day_of_week,start_time,end_time,schedule_type,effective_from,is_active,created_by) VALUES(v_admin.institute_id,v_year.id,v_batch.id,v_subject.id,1,'08:00','09:00','regular_class',v_year.start_date,true,v_admin.id) RETURNING id INTO v_schedule;
   INSERT INTO public.learning_planner_public_holidays(institute_id,provider,external_id,holiday_date,name,normalized_name,holiday_scope,observed_as_holiday,created_by) VALUES(v_admin.institute_id,'TEST','test-non-working',v_date,'TEST HOLIDAY','TEST HOLIDAY','national',true,v_admin.id) RETURNING id INTO v_holiday;
   PERFORM set_config('request.jwt.claim.sub',v_admin.id::text,true); PERFORM set_config('role','authenticated',true);
-  SELECT public.generate_schedule_events(v_date,v_date,NULL,v_schedule) INTO v_result;
-  IF (v_result->>'generatedCount')::int<>0 OR (v_result->>'conflictCount')::int<>1 THEN RAISE EXCEPTION 'Imported non-working holiday did not suppress generation: %',v_result; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.learning_planner_public_holidays WHERE id=v_holiday AND observed_as_holiday IS TRUE) THEN RAISE EXCEPTION 'Durable non-working holiday is unavailable to the projection layer'; END IF;
+  IF EXISTS(SELECT 1 FROM public.schedule_events WHERE class_schedule_id=v_schedule AND event_date=v_date) THEN RAISE EXCEPTION 'Holiday handling materialized a routine occurrence'; END IF;
   UPDATE public.learning_planner_public_holidays SET observed_as_holiday=false WHERE id=v_holiday;
-  SELECT public.generate_schedule_events(v_date,v_date,NULL,v_schedule) INTO v_result;
-  IF (v_result->>'generatedCount')::int<>1 THEN RAISE EXCEPTION 'Working-day override did not permit generation: %',v_result; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.learning_planner_public_holidays WHERE id=v_holiday AND observed_as_holiday IS FALSE) THEN RAISE EXCEPTION 'Working-day override was not retained'; END IF;
+  IF EXISTS(SELECT 1 FROM public.schedule_events WHERE class_schedule_id=v_schedule AND event_date=v_date) THEN RAISE EXCEPTION 'Working-day override unexpectedly persisted a routine occurrence'; END IF;
   IF v_other.id IS NOT NULL AND EXISTS(SELECT 1 FROM public.learning_planner_public_holidays WHERE id=v_holiday AND institute_id=v_other.institute_id) THEN RAISE EXCEPTION 'Cross-institute holiday leakage'; END IF;
 END $$;
 
