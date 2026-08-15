@@ -8,6 +8,7 @@ import type {
   ClassSchedule,
   ScheduleEvent,
 } from "@/features/learning-planner/types/learning-planner";
+import { createClient } from "@/lib/supabase/server";
 
 const DAY_MS = 86_400_000;
 
@@ -79,6 +80,7 @@ export function expandRecurringSchedules({
   fromDate,
   toDate,
   batchWindows,
+  activeBatchIds,
 }: {
   schedules: ClassSchedule[];
   persistedEvents: ScheduleEvent[];
@@ -86,6 +88,7 @@ export function expandRecurringSchedules({
   fromDate: string;
   toDate: string;
   batchWindows?: Map<string, Array<{ fromDate: string; toDate: string }>>;
+  activeBatchIds?: Set<string>;
 }): ScheduleEvent[] {
   const persistedSources = new Set(
     persistedEvents
@@ -102,6 +105,8 @@ export function expandRecurringSchedules({
   const result: ScheduleEvent[] = [];
 
   for (const schedule of schedules) {
+    if (!schedule.isActive) continue;
+    if (activeBatchIds && !activeBatchIds.has(schedule.batchId)) continue;
     const windows = batchWindows?.get(schedule.batchId);
     if (batchWindows && !windows?.length) continue;
     for (let time = start.getTime(); time <= end.getTime(); time += DAY_MS) {
@@ -125,19 +130,31 @@ export function expandRecurringSchedules({
   return result;
 }
 
+async function listActiveBatchIds(profile: AuthProfile): Promise<Set<string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("batches")
+    .select("id")
+    .eq("institute_id", profile.instituteId)
+    .eq("is_active", true);
+  if (error) throw error;
+  return new Set((data ?? []).map((batch) => batch.id));
+}
+
 export async function listCalendarReadModel(
   profile: AuthProfile,
   fromDate: string,
   toDate: string,
   batchWindows?: Map<string, Array<{ fromDate: string; toDate: string }>>,
 ): Promise<ScheduleEvent[]> {
-  const [schedules, persistedEvents, holidayData] = await Promise.all([
+  const [schedules, persistedEvents, holidayData, activeBatchIds] = await Promise.all([
     listClassSchedules(profile),
     listScheduleEvents(profile, { dateFrom: fromDate, dateTo: toDate }),
     getHolidayCalendar(profile, fromDate, toDate).catch(() => ({
       holidays: [],
       providerAvailable: false,
     })),
+    listActiveBatchIds(profile),
   ]);
   const nonWorkingHolidayDates = new Set(
     holidayData.holidays
@@ -161,6 +178,7 @@ export async function listCalendarReadModel(
     fromDate,
     toDate,
     batchWindows,
+    activeBatchIds,
   });
   return [...persistedEvents, ...projections].sort(
     (left, right) =>

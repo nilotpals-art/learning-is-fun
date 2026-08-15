@@ -1,13 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { Plus } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -73,10 +78,10 @@ function eventStatusTone(status: ScheduleEvent["status"]) {
 }
 
 function eventLabel(event: ScheduleEvent) {
-  if (event.reschedulePending) return "Cancelled · Reschedule Pending";
+  if (event.reschedulePending) return "Reschedule Pending";
   if (event.scheduleType === "extra_class") return "Extra Class";
   const status = effectiveEventStatus(event);
-  return status.charAt(0).toUpperCase() + status.slice(1);
+  return status === "scheduled" ? "Scheduled" : status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function EventDialog({
@@ -365,7 +370,7 @@ function LifecycleDialog({
             {kind === "cancel"
               ? "Cancel Class"
               : kind === "replacement"
-                ? "Schedule Replacement"
+                ? "Schedule New Date/Time"
                 : "Reschedule Class"}
           </DialogTitle>
           <DialogDescription>
@@ -455,7 +460,7 @@ export function EventManager({
   options: PlannerOptions;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
   const [related, setRelated] = useState<ScheduleEvent | null>(null);
   const [lifecycle, setLifecycle] = useState<{
@@ -494,9 +499,11 @@ export function EventManager({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Event</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead>Batch / Subject</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Subject</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -515,96 +522,71 @@ export function EventManager({
                         : event.scheduleType === "extra_class"
                           ? "bg-sky-50/70"
                           : "bg-slate-50/40";
+                const menuItems = [] as Array<{ label: string; onSelect: () => void; danger?: boolean }>;
+
+                if (event.scheduleType === "regular_class" && !event.isProjected) {
+                  menuItems.push({ label: "Create Extra Class", onSelect: () => { setRelated(event); setCreateOpen(true); } });
+                }
+
+                if (event.isProjected && event.scheduleType === "regular_class") {
+                  menuItems.push({ label: "Cancel Class", onSelect: () => setLifecycle({ event, kind: "cancel" }) });
+                  menuItems.push({ label: "Reschedule Class", onSelect: () => setLifecycle({ event, kind: "reschedule" }) });
+                }
+
+                if (!event.isProjected && event.reschedulePending) {
+                  menuItems.push({ label: "Schedule New Date/Time", onSelect: () => setLifecycle({ event, kind: "replacement" }) });
+                }
+
+                if (!isCompleted && (event.status === "scheduled" || event.status === "rescheduled")) {
+                  menuItems.push({ label: event.status === "rescheduled" ? "Reschedule Again" : "Reschedule", onSelect: () => setLifecycle({ event, kind: "reschedule" }) });
+                  if (!event.isProjected && event.status === "scheduled") {
+                    menuItems.push({ label: "Mark Complete", onSelect: () => start(async () => { await completeScheduleEventAction({ eventId: event.id }); router.refresh(); }) });
+                  }
+                  menuItems.push({ label: "Cancel", onSelect: () => setLifecycle({ event, kind: "cancel" }), danger: true });
+                }
+
+                if (!event.isProjected) {
+                  menuItems.push({ label: "View History", onSelect: () => router.push(`/learning-planner/history?event=${event.id}`) });
+                }
+
+                if (event.scheduleType === "exam") {
+                  menuItems.push({ label: "Results", onSelect: () => router.push(`/learning-planner/exam-results/${event.id}`) });
+                }
+
                 return (
                   <TableRow key={event.id} className={rowTone}>
+                    <TableCell>{event.eventDate}</TableCell>
+                    <TableCell>{event.startTime ?? "All day"}{event.endTime ? `–${event.endTime}` : ""}</TableCell>
                     <TableCell>
                       <div className="font-medium">{event.title}</div>
                       <div className="text-xs text-muted-foreground">{labels[event.scheduleType as keyof typeof labels] ?? event.scheduleType.replaceAll("_", " ")}</div>
                     </TableCell>
-                    <TableCell>
-                      <div>{event.eventDate}</div>
-                      <div className="text-xs text-muted-foreground">{event.startTime ?? "All day"}{event.endTime ? `–${event.endTime}` : ""}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div>{event.batchName ?? "Institute-wide"}</div>
-                      <div className="text-xs text-muted-foreground">{event.subjectName ?? "General / Combined Assessment"}</div>
-                    </TableCell>
+                    <TableCell>{event.batchName ?? "Institute-wide"}</TableCell>
+                    <TableCell>{event.subjectName ?? "General / Combined Assessment"}</TableCell>
                     <TableCell>
                       <Badge className={eventStatusTone(status)} variant="secondary">
                         {eventLabel(event)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {event.scheduleType === "regular_class" && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setRelated(event);
-                              setCreateOpen(true);
-                            }}
-                          >
-                            Extra Class
-                          </Button>
-                        )}
-                        {!event.isProjected && event.reschedulePending && (
-                          <Button type="button" size="sm" onClick={() => setLifecycle({ event, kind: "replacement" })}>
-                            Reschedule
-                          </Button>
-                        )}
-                        {!isCompleted && event.status === "scheduled" && (
-                          <>
-                            <Button type="button" size="sm" variant="outline" onClick={() => setLifecycle({ event, kind: "reschedule" })}>
-                              Reschedule
-                            </Button>
-                            {!event.isProjected && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  start(async () => {
-                                    await completeScheduleEventAction({ eventId: event.id });
-                                    router.refresh();
-                                  })
-                                }
-                                disabled={pending}
-                              >
-                                Complete
-                              </Button>
-                            )}
-                            <Button type="button" size="sm" variant="destructive" onClick={() => setLifecycle({ event, kind: "cancel" })}>
-                              Cancel
-                            </Button>
-                          </>
-                        )}
-                        {event.isProjected ? (
-                          <Badge variant="outline">Derived</Badge>
-                        ) : (
-                          <Button
-                            nativeButton={false}
-                            render={<Link href={`/learning-planner/history?event=${event.id}`} />}
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                          >
-                            History
-                          </Button>
-                        )}
-                        {event.scheduleType === "exam" && (
-                          <Button
-                            nativeButton={false}
-                            render={<Link href={`/learning-planner/exam-results/${event.id}`} />}
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                          >
-                            Results
-                          </Button>
-                        )}
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={<Button type="button" variant="ghost" size="icon-sm" aria-label={`Actions for ${event.title}`} />}
+                        >
+                          <MoreHorizontal />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {menuItems.length > 0 ? menuItems.map((item) => (
+                            <DropdownMenuItem
+                              key={item.label}
+                              variant={item.danger ? "destructive" : undefined}
+                              onClick={item.onSelect}
+                            >
+                              {item.label}
+                            </DropdownMenuItem>
+                          )) : <DropdownMenuItem disabled>No actions</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
