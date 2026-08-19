@@ -5,6 +5,7 @@ import { normalizeUpperText } from "@/lib/validation/normalization";
 const id = z.string().uuid();
 const money = z.coerce.number().positive().multipleOf(0.01);
 const optionalText = (max: number) => z.string().trim().max(max).transform((value) => value || null).nullable();
+const messageFormat = z.string().trim().min(10).max(2000);
 
 export const feeAssignmentSchema = z.object({
   studentId: id,
@@ -45,6 +46,8 @@ export const settingsSchema = z.object({
   recipientPreference: z.enum(["parent", "student", "both"]),
   reminderTemplateName: z.string().trim().min(1).max(100),
   confirmationTemplateName: z.string().trim().min(1).max(100),
+  reminderMessageFormat: messageFormat,
+  confirmationMessageFormat: messageFormat,
   defaultMonthlyDueDay: z.coerce.number().int().min(1).max(28),
   upiId: optionalText(150),
   bankName: optionalText(150),
@@ -52,5 +55,6 @@ export const settingsSchema = z.object({
   bankAccountNumber: optionalText(80),
   bankIfsc: optionalText(30),
   bankBranch: optionalText(150),
-  qrCodeUrl: z.string().trim().max(4000).refine((value) => !value || value.startsWith("https://") || value.startsWith("data:image/"), "Use an HTTPS image URL or data:image URL.").transform((value) => value || null).nullable(),
+  qrCodeUrl: z.string().trim().max(4000).refine((value) => !value || value.startsWith("https://"), "Use an HTTPS image URL.").transform((value) => value || null).nullable(),
+  qrCodePath: optionalText(500),
 });
