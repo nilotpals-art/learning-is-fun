@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { applyFeeStructure, findFeeStructure } from "@/features/fees/services/fee-structure-service";
 import { changeStudentAssignment, createOrReuseSchool } from "@/features/student-academic-assignments/services/student-academic-assignment-service";
 import type { AssignmentActionResult } from "@/features/student-academic-assignments/types/student-academic-assignment";
 import { studentAssignmentSchema } from "@/features/student-academic-assignments/validations/student-academic-assignment-schema";
@@ -29,8 +30,34 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
   if (!profile.instituteId) redirect("/unauthorized");
   try {
     const result = await changeStudentAssignment(parsed.data);
+
+    // Academic assignment/promotion is the existing-student equivalent of admission.
+    // Apply the active fee structure for the selected Academic Year + Class so annual fee changes
+    // flow to promoted/existing students without re-entering fees manually.
+    try {
+      const structure = await findFeeStructure(profile, parsed.data.academicYearId, parsed.data.classId);
+      if (structure) {
+        await applyFeeStructure(profile, parsed.data.studentId, structure.id, structure.items.map((item) => ({
+          itemId: item.id,
+          include: true,
+          amount: item.amount,
+          discountType: null,
+          discountValue: 0,
+        })));
+      }
+    } catch (feeError) {
+      console.error("Academic assignment saved but automatic fee assignment was skipped", {
+        studentId: parsed.data.studentId,
+        academicYearId: parsed.data.academicYearId,
+        classId: parsed.data.classId,
+        error: feeError instanceof Error ? feeError.message : "unknown",
+      });
+    }
+
     revalidatePath("/students/academic-assignments");
     revalidatePath("/students");
+    revalidatePath("/fees/student-fees");
+    revalidatePath("/fees/reports");
     return { status: "success", assignmentId: result.assignmentId, message: result.operation === "created" ? "Student assigned successfully." : "Academic assignment changed and previous history preserved." };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

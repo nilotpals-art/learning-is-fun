@@ -17,10 +17,13 @@ export interface FeeDue {
   netAmount: number;
   outstanding: number;
   status: string;
+  scheduleType: "one_time" | "monthly" | "quarterly" | "custom" | null;
 }
 
 export interface FeePayment {
   id: string;
+  studentId: string;
+  academicYearId: string;
   studentName: string;
   academicYearName: string;
   paymentModeName: string;
@@ -45,6 +48,26 @@ export interface FeeMessage {
   lastErrorCode: string | null;
 }
 
+export interface SecurityDepositEntry {
+  id: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string | null;
+  entryType: "credit" | "adjustment" | "refund" | "reversal";
+  amount: number;
+  targetDueId: string | null;
+  referenceNo: string | null;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface SecurityDepositBalance {
+  studentId: string;
+  studentName: string;
+  admissionNo: string | null;
+  balance: number;
+}
+
 export interface FeeSettings {
   defaultMonthlyDueDay: number;
   whatsappFeeRemindersEnabled: boolean;
@@ -55,6 +78,16 @@ export interface FeeSettings {
   recipientPreference: "parent" | "student" | "both";
   reminderTemplateName: string;
   confirmationTemplateName: string;
+  reminderMessageFormat: string;
+  confirmationMessageFormat: string;
+  upiId: string | null;
+  bankName: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankIfsc: string | null;
+  bankBranch: string | null;
+  qrCodeUrl: string | null;
+  qrCodePath: string | null;
 }
 
 export interface FeeSummary {
