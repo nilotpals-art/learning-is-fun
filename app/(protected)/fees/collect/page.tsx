@@ -1,3 +1,17 @@
 import { redirect } from "next/navigation";
-import { CollectPayment } from "@/features/fees/components/fees-manager";import { getFeeReferenceData,listFeeDues } from "@/features/fees/services/fee-service";import { requireRole } from "@/lib/auth/services/auth-service";import { DASHBOARD_ROLES } from "@/lib/navigation";
-export default async function Page(){const p=await requireRole(DASHBOARD_ROLES);if(!p.instituteId)redirect("/unauthorized");const [r,d]=await Promise.all([getFeeReferenceData(p),listFeeDues(p)]);return <CollectPayment students={r.students} years={r.academicYears} modes={r.paymentModes} dues={d}/>}
+
+import { CollectPayment } from "@/features/fees/components/fees-manager";
+import { getFeeReferenceData, getFeeSettings, listFeeDues } from "@/features/fees/services/fee-service";
+import { requireRole } from "@/lib/auth/services/auth-service";
+import { DASHBOARD_ROLES } from "@/lib/navigation";
+
+export default async function Page() {
+  const profile = await requireRole(DASHBOARD_ROLES);
+  if (!profile.instituteId) redirect("/unauthorized");
+  const [references, dues, settings] = await Promise.all([
+    getFeeReferenceData(profile),
+    listFeeDues(profile),
+    getFeeSettings(profile),
+  ]);
+  return <CollectPayment students={references.students} years={references.academicYears} modes={references.paymentModes} dues={dues} settings={settings} />;
+}
