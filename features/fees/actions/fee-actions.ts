@@ -14,21 +14,21 @@ function errorResult(error: unknown): FeeActionResult {
   const message = error && typeof error === "object" && "message" in error ? String(error.message) : "";
   const known: Record<string, string> = {
     FEES_UNAUTHORIZED: "You are not authorised to manage Fees.", FEES_REFERENCE_INVALID: "The selected Student, Academic Year, or Fee Head is invalid.",
-    FEES_INSTALLMENT_TOTAL_INVALID: "Installment totals must match the assigned fee and discount.", FEES_INSTALLMENT_DUPLICATE: "Installment numbers must be unique.",
-    FEES_PAYMENT_MODE_INVALID: "Select an active Payment Mode.", FEES_ALLOCATION_EXCEEDS_OUTSTANDING: "A payment allocation exceeds the outstanding amount.",
-    FEES_PAYMENT_ALREADY_REVERSED: "This payment has already been reversed.", FEES_DUE_NOT_OUTSTANDING: "This fee has no outstanding balance.",
+    FEES_INSTALLMENT_TOTAL_INVALID: "Fee totals do not match the assigned amount.", FEES_INSTALLMENT_DUPLICATE: "Duplicate fee schedule entries are not allowed.",
+    FEES_PAYMENT_MODE_INVALID: "Select an active Payment Mode.", FEES_ALLOCATION_EXCEEDS_OUTSTANDING: "A payment allocation exceeds the pending amount.",
+    FEES_PAYMENT_ALREADY_REVERSED: "This payment has already been reversed.", FEES_DUE_NOT_OUTSTANDING: "This fee has no pending balance.",
     FEES_NO_WHATSAPP_RECIPIENT: "No eligible Student or Parent mobile number is available.",
   };
   const code = Object.keys(known).find((key) => message.includes(key));
   return { status: "error", message: code ? known[code] : "The Fees operation could not be completed. Please try again." };
 }
-function refresh() { ["/fees", "/fees/student-fees", "/fees/collect", "/fees/payments", "/fees/reports", "/fees/messages", "/student/fees", "/dashboard"].forEach((path) => revalidatePath(path)); }
+function refresh() { ["/fees", "/fees/student-fees", "/fees/collect", "/fees/payments", "/fees/reports", "/fees/messages", "/student/fees", "/parent/fees", "/dashboard"].forEach((path) => revalidatePath(path)); }
 function fields(value: Record<string, string[] | undefined>): Record<string, string[]> { return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string[]] => Boolean(entry[1]))); }
 
 export async function createFeeAssignment(input: unknown): Promise<FeeActionResult> {
   const parsed = feeAssignmentSchema.safeParse(input); if (!parsed.success) return { status: "error", message: "Please correct the Fee Assignment details.", fieldErrors: fields(parsed.error.flatten().fieldErrors) };
   await admin(); const supabase = await createClient(); const v = parsed.data;
-  const { data, error } = await supabase.rpc("create_student_fee_assignment", { p_student_id: v.studentId, p_academic_year_id: v.academicYearId, p_fee_head_id: v.feeHeadId, p_amount: v.amount, p_discount_type: v.discountType, p_discount_value: v.discountValue, p_effective_from: v.effectiveFrom, p_effective_to: v.effectiveTo, p_installments: v.installments.map((x) => ({ installment_no: x.installmentNo, due_date: x.dueDate, gross_amount: x.grossAmount, discount_amount: x.discountAmount, net_amount: x.netAmount })) });
+  const { data, error } = await supabase.rpc("create_student_fee_assignment", { p_student_id: v.studentId, p_academic_year_id: v.academicYearId, p_fee_head_id: v.feeHeadId, p_amount: v.amount, p_discount_type: null, p_discount_value: 0, p_effective_from: v.effectiveFrom, p_effective_to: null, p_installments: v.installments.map((x) => ({ installment_no: x.installmentNo, due_date: x.dueDate, gross_amount: x.grossAmount, discount_amount: 0, net_amount: x.grossAmount })) });
   if (error) return errorResult(error); refresh(); return { status: "success", message: "Student fee assigned.", data };
 }
 
@@ -53,12 +53,31 @@ export async function queueManualFeeReminder(input: unknown): Promise<FeeActionR
 
 export async function queueOverdueFeeReminders(): Promise<FeeActionResult> {
   await admin(); const supabase = await createClient(); const { data, error } = await supabase.rpc("queue_overdue_fee_whatsapp_reminders", {});
-  if (error) return errorResult(error); revalidatePath("/fees/messages"); const count = Number((data as { queuedCount?: number }).queuedCount ?? 0); return { status: "success", message: `${count} overdue reminder${count === 1 ? "" : "s"} queued. This action is scheduler-ready; no automatic schedule is configured.` };
+  if (error) return errorResult(error); revalidatePath("/fees/messages"); const count = Number((data as { queuedCount?: number }).queuedCount ?? 0); return { status: "success", message: `${count} pending-fee reminder${count === 1 ? "" : "s"} queued.` };
 }
 
 export async function updateFeeSettings(input: unknown): Promise<FeeActionResult> {
-  const parsed = settingsSchema.safeParse(input); if (!parsed.success) return { status: "error", message: "Please correct the reminder settings.", fieldErrors: fields(parsed.error.flatten().fieldErrors) };
+  const parsed = settingsSchema.safeParse(input); if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Please correct the fee settings.", fieldErrors: fields(parsed.error.flatten().fieldErrors) };
   const profile = await admin(); const supabase = await createClient(); const v = parsed.data;
-  const { error } = await supabase.from("fee_settings").update({ whatsapp_fee_reminders_enabled: v.whatsappFeeRemindersEnabled, reminder_after_due_days: v.reminderAfterDueDays, repeat_every_days: v.repeatEveryDays, max_reminders_per_due: v.maxRemindersPerDue, whatsapp_payment_confirmations_enabled: v.whatsappPaymentConfirmationsEnabled, recipient_preference: v.recipientPreference, reminder_template_name: v.reminderTemplateName, confirmation_template_name: v.confirmationTemplateName, updated_by: profile.id, updated_at: new Date().toISOString() }).eq("institute_id", profile.instituteId);
-  if (error) return errorResult(error); revalidatePath("/fees/settings"); return { status: "success", message: "Fee reminder settings updated." };
+  const { error } = await supabase.from("fee_settings").update({
+    default_monthly_due_day: v.defaultMonthlyDueDay,
+    whatsapp_fee_reminders_enabled: v.whatsappFeeRemindersEnabled,
+    reminder_after_due_days: v.reminderAfterDueDays,
+    repeat_every_days: v.repeatEveryDays,
+    max_reminders_per_due: v.maxRemindersPerDue,
+    whatsapp_payment_confirmations_enabled: v.whatsappPaymentConfirmationsEnabled,
+    recipient_preference: v.recipientPreference,
+    reminder_template_name: v.reminderTemplateName,
+    confirmation_template_name: v.confirmationTemplateName,
+    upi_id: v.upiId,
+    bank_name: v.bankName,
+    bank_account_name: v.bankAccountName,
+    bank_account_number: v.bankAccountNumber,
+    bank_ifsc: v.bankIfsc,
+    bank_branch: v.bankBranch,
+    qr_code_url: v.qrCodeUrl,
+    updated_by: profile.id,
+    updated_at: new Date().toISOString(),
+  }).eq("institute_id", profile.instituteId);
+  if (error) return errorResult(error); ["/fees/settings", "/fees/collect", "/student/fees", "/parent/fees"].forEach((path) => revalidatePath(path)); return { status: "success", message: "Fee and payment details updated." };
 }
