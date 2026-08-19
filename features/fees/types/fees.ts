@@ -48,6 +48,26 @@ export interface FeeMessage {
   lastErrorCode: string | null;
 }
 
+export interface SecurityDepositEntry {
+  id: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string | null;
+  entryType: "credit" | "adjustment" | "refund" | "reversal";
+  amount: number;
+  targetDueId: string | null;
+  referenceNo: string | null;
+  remarks: string | null;
+  createdAt: string;
+}
+
+export interface SecurityDepositBalance {
+  studentId: string;
+  studentName: string;
+  admissionNo: string | null;
+  balance: number;
+}
+
 export interface FeeSettings {
   defaultMonthlyDueDay: number;
   whatsappFeeRemindersEnabled: boolean;
