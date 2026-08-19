@@ -2,12 +2,35 @@ import "server-only";
 import type { AuthProfile } from "@/features/auth/types/auth";
 import { aiGenerationSchema } from "@/features/practice-work/schemas/ai-generation-schema";
 import { GeminiQuestionGenerationProvider, validateGeneratedMarks } from "@/features/practice-work/services/gemini-question-generation-provider";
+import { GroqQuestionGenerationProvider } from "@/features/practice-work/services/groq-question-generation-provider";
 import { normalizeQuestionText } from "@/features/practice-work/services/practice-work-service";
 import type { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { AiGeneration, GeneratedQuestion, GenerationReviewContext } from "@/features/practice-work/types/practice-work";
 
 type Input=z.infer<typeof aiGenerationSchema>;
+
+function createQuestionGenerationProvider(){
+  const hasGroq=Boolean(process.env.GROQ_API_KEY?.trim());
+  const hasGemini=Boolean(process.env.GEMINI_API_KEY?.trim());
+  if(hasGroq){
+    const groq=new GroqQuestionGenerationProvider();
+    if(!hasGemini)return groq;
+    const gemini=new GeminiQuestionGenerationProvider();
+    return{
+      model:`groq:${groq.model}`,
+      async generate(input:unknown){
+        try{return await groq.generate(input)}catch(error){
+          console.warn("Groq generation failed; using Gemini fallback",{groqModel:groq.model,geminiModel:gemini.model,errorCode:error instanceof Error?error.message:"UNKNOWN"});
+          return gemini.generate(input);
+        }
+      },
+    };
+  }
+  if(hasGemini)return new GeminiQuestionGenerationProvider();
+  throw new Error("AI_GENERATION_NOT_CONFIGURED");
+}
+
 export async function generateQuestionsWithAi(profile:AuthProfile,input:Input){
   if(!profile.instituteId)throw new Error("PRACTICE_UNAUTHORIZED");
   const supabase=await createClient();
@@ -19,7 +42,7 @@ export async function generateQuestionsWithAi(profile:AuthProfile,input:Input){
   if(refs.some(result=>result.error||!result.data))throw new Error("PRACTICE_REFERENCE_INVALID");
   const{data:template,error:tError}=await supabase.from("question_templates").select("id,name,question_type,instructions,prompt_rules,blueprint").eq("id",input.templateId).eq("institute_id",profile.instituteId).eq("is_active",true).maybeSingle();
   if(tError||!template)throw new Error("PRACTICE_TEMPLATE_INVALID");
-  const provider=new GeminiQuestionGenerationProvider();
+  const provider=createQuestionGenerationProvider();
   const{data:generation,error:gError}=await supabase.from("ai_question_generations").insert({institute_id:profile.instituteId,source_type:"ai",board_id:input.boardId,class_id:input.classId,subject_id:input.subjectId,book_name:input.bookName?.toUpperCase()??null,chapter:input.chapter?.toUpperCase()??null,question_exam_date:input.questionExamDate??null,source_full_marks:input.sourceFullMarks,skill:input.skill?.toUpperCase()??null,topic:input.topic?.toUpperCase()??null,subtopic:input.subtopic?.toUpperCase()??null,template_id:input.templateId,question_count_requested:input.questionCount,difficulty:input.difficulty,custom_instruction:input.specialInstructions??null,include_answers:input.includeAnswers,include_explanations:input.includeExplanations,avoid_duplicates:input.avoidDuplicates,keep_language_simple:input.keepLanguageSimple,model:provider.model,status:"pending",created_by:profile.id}).select("id").single();
   if(gError)throw gError;
   try{
