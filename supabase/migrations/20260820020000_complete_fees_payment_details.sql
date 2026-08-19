@@ -27,6 +27,19 @@ ALTER TABLE public.fee_settings
   ADD CONSTRAINT fee_settings_bank_branch_length_check CHECK (bank_branch IS NULL OR length(bank_branch) <= 150),
   ADD CONSTRAINT fee_settings_qr_code_url_length_check CHECK (qr_code_url IS NULL OR length(qr_code_url) <= 4000);
 
+DROP POLICY IF EXISTS fee_settings_member_select ON public.fee_settings;
+CREATE POLICY fee_settings_member_select ON public.fee_settings
+  FOR SELECT TO authenticated
+  USING (
+    institute_id IN (
+      SELECT p.institute_id
+      FROM public.profiles p
+      WHERE p.id = (SELECT auth.uid())
+        AND p.is_active IS TRUE
+        AND p.institute_id IS NOT NULL
+    )
+  );
+
 COMMENT ON COLUMN public.fee_settings.upi_id IS 'Institute UPI ID displayed to students and parents for fee payment.';
 COMMENT ON COLUMN public.fee_settings.qr_code_url IS 'HTTPS or data-image URL for the institute payment QR code.';
 
