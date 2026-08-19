@@ -27,10 +27,19 @@ export function AnnualFeeUpdateManager({ structures }: { structures: FeeStructur
     return amounts[itemId] ?? String(current);
   }
 
+  const projectedMonthlyFee = useMemo(() => {
+    if (!selected) return 0;
+    return selected.items
+      .filter((item) => item.scheduleType === "monthly" && item.feeNature !== "refundable_deposit")
+      .reduce((sum, item) => sum + Number(amountFor(item.id, item.amount)), 0);
+  }, [selected, amounts]);
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
-    const rates = selected.items.map((item) => ({ itemId: item.id, amount: Number(amountFor(item.id, item.amount)) }));
+    const rates = selected.items
+      .filter((item) => item.feeNature !== "refundable_deposit")
+      .map((item) => ({ itemId: item.id, amount: Number(amountFor(item.id, item.amount)) }));
     start(async () => {
       const result = await updateClassFeeRates({ structureId: selected.id, effectiveFrom, applyExisting, rates });
       toast.add({ title: result.status === "success" ? "Fees updated" : "Unable to update", description: result.message, type: result.status === "success" ? "success" : "error" });
@@ -61,13 +70,17 @@ export function AnnualFeeUpdateManager({ structures }: { structures: FeeStructur
           <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={applyExisting} onChange={(e) => setApplyExisting(e.target.checked)} />Apply to existing students</label>
         </div>
         {selected ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {selected.items.map((item) => <label key={item.id} className="grid gap-2 rounded-2xl border p-4 text-sm">
+          {selected.items.map((item) => item.feeNature === "refundable_deposit" ? <div key={item.id} className="grid gap-2 rounded-2xl border bg-muted/30 p-4 text-sm">
+            <span className="font-medium">{item.feeHeadName}</span>
+            <span className="text-xs text-muted-foreground">Automatic · equals one month’s applicable class fee on the admission date</span>
+            <div className="rounded-xl border bg-background px-3 py-2 font-semibold">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(projectedMonthlyFee)}</div>
+          </div> : <label key={item.id} className="grid gap-2 rounded-2xl border p-4 text-sm">
             <span className="font-medium">{item.feeHeadName}</span>
             <span className="text-xs text-muted-foreground">{item.scheduleType === "monthly" ? "Monthly fee" : `${item.scheduleType.replaceAll("_", " ")} · new admissions/future assignments`}</span>
             <Input type="number" min="0.01" step="0.01" value={amountFor(item.id, item.amount)} onChange={(e) => setAmounts((old) => ({ ...old, [item.id]: e.target.value }))} required />
           </label>)}
         </div> : null}
-        <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">Existing-student synchronization applies to <strong>monthly</strong> fee dues from the effective date onward. Already-paid months are never rewritten. If a month is partly paid, the amount already received is preserved.</div>
+        <div className="rounded-2xl bg-muted/40 p-4 text-sm text-muted-foreground">Existing-student synchronization applies only to <strong>monthly</strong> fee dues from the effective date onward. Already-paid months are never rewritten. Security Deposit is never increased for an existing student; each student keeps the one-month amount captured on their admission date.</div>
         <Button disabled={pending || !selected}>{pending ? "Updating…" : "Update Class Fees"}</Button>
       </form> : <p className="text-sm text-muted-foreground">Create and activate a class Fee Structure first.</p>}
     </CardContent>
