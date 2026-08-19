@@ -22,7 +22,7 @@ function errorResult(error: unknown): FeeActionResult {
   const code = Object.keys(known).find((key) => message.includes(key));
   return { status: "error", message: code ? known[code] : "The Fees operation could not be completed. Please try again." };
 }
-function refresh() { ["/fees", "/fees/student-fees", "/fees/collect", "/fees/payments", "/fees/reports", "/fees/messages", "/student/fees", "/parent/fees", "/dashboard"].forEach((path) => revalidatePath(path)); }
+function refresh() { ["/fees", "/fees/student-fees", "/fees/collect", "/fees/payments", "/fees/reports", "/fees/messages", "/fees/settings", "/student/fees", "/parent/fees", "/dashboard"].forEach((path) => revalidatePath(path)); }
 function fields(value: Record<string, string[] | undefined>): Record<string, string[]> { return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string[]] => Boolean(entry[1]))); }
 
 export async function createFeeAssignment(input: unknown): Promise<FeeActionResult> {
@@ -56,6 +56,25 @@ export async function queueOverdueFeeReminders(): Promise<FeeActionResult> {
   if (error) return errorResult(error); revalidatePath("/fees/messages"); const count = Number((data as { queuedCount?: number }).queuedCount ?? 0); return { status: "success", message: `${count} pending-fee reminder${count === 1 ? "" : "s"} queued.` };
 }
 
+export async function uploadFeeQrCode(formData: FormData): Promise<FeeActionResult<{ url: string }>> {
+  const profile = await admin();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { status: "error", message: "Select a QR code image to upload." };
+  if (!new Set(["image/png", "image/jpeg", "image/webp"]).has(file.type)) return { status: "error", message: "QR code must be a PNG, JPG, or WebP image." };
+  if (file.size > 2 * 1024 * 1024) return { status: "error", message: "QR code image must be 2 MB or smaller." };
+
+  const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${profile.instituteId}/payment-qr.${extension}`;
+  const supabase = await createClient();
+  const { error: uploadError } = await supabase.storage.from("fee-payment-assets").upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+  if (uploadError) return { status: "error", message: `QR upload failed: ${uploadError.message}` };
+  const { data } = supabase.storage.from("fee-payment-assets").getPublicUrl(path);
+  const { error: updateError } = await supabase.from("fee_settings").update({ qr_code_url: data.publicUrl, qr_code_path: path, updated_by: profile.id, updated_at: new Date().toISOString() }).eq("institute_id", profile.instituteId);
+  if (updateError) return errorResult(updateError);
+  refresh();
+  return { status: "success", message: "Payment QR code uploaded.", data: { url: data.publicUrl } };
+}
+
 export async function updateFeeSettings(input: unknown): Promise<FeeActionResult> {
   const parsed = settingsSchema.safeParse(input); if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Please correct the fee settings.", fieldErrors: fields(parsed.error.flatten().fieldErrors) };
   const profile = await admin(); const supabase = await createClient(); const v = parsed.data;
@@ -69,6 +88,8 @@ export async function updateFeeSettings(input: unknown): Promise<FeeActionResult
     recipient_preference: v.recipientPreference,
     reminder_template_name: v.reminderTemplateName,
     confirmation_template_name: v.confirmationTemplateName,
+    reminder_message_format: v.reminderMessageFormat,
+    confirmation_message_format: v.confirmationMessageFormat,
     upi_id: v.upiId,
     bank_name: v.bankName,
     bank_account_name: v.bankAccountName,
@@ -76,8 +97,9 @@ export async function updateFeeSettings(input: unknown): Promise<FeeActionResult
     bank_ifsc: v.bankIfsc,
     bank_branch: v.bankBranch,
     qr_code_url: v.qrCodeUrl,
+    qr_code_path: v.qrCodePath,
     updated_by: profile.id,
     updated_at: new Date().toISOString(),
   }).eq("institute_id", profile.instituteId);
-  if (error) return errorResult(error); ["/fees/settings", "/fees/collect", "/student/fees", "/parent/fees"].forEach((path) => revalidatePath(path)); return { status: "success", message: "Fee and payment details updated." };
+  if (error) return errorResult(error); refresh(); return { status: "success", message: "Fee payment details and WhatsApp message formats updated." };
 }
