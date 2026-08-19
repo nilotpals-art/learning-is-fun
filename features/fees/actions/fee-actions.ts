@@ -64,13 +64,18 @@ export async function uploadFeeQrCode(formData: FormData): Promise<FeeActionResu
   if (file.size > 2 * 1024 * 1024) return { status: "error", message: "QR code image must be 2 MB or smaller." };
 
   const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const path = `${profile.instituteId}/payment-qr.${extension}`;
+  const path = `${profile.instituteId}/payment-qr-${Date.now()}.${extension}`;
   const supabase = await createClient();
-  const { error: uploadError } = await supabase.storage.from("fee-payment-assets").upload(path, file, { upsert: true, contentType: file.type, cacheControl: "3600" });
+  const { data: oldSettings } = await supabase.from("fee_settings").select("qr_code_path").eq("institute_id", profile.instituteId).maybeSingle();
+  const { error: uploadError } = await supabase.storage.from("fee-payment-assets").upload(path, file, { contentType: file.type, cacheControl: "3600" });
   if (uploadError) return { status: "error", message: `QR upload failed: ${uploadError.message}` };
   const { data } = supabase.storage.from("fee-payment-assets").getPublicUrl(path);
   const { error: updateError } = await supabase.from("fee_settings").update({ qr_code_url: data.publicUrl, qr_code_path: path, updated_by: profile.id, updated_at: new Date().toISOString() }).eq("institute_id", profile.instituteId);
-  if (updateError) return errorResult(updateError);
+  if (updateError) {
+    await supabase.storage.from("fee-payment-assets").remove([path]);
+    return errorResult(updateError);
+  }
+  if (oldSettings?.qr_code_path && oldSettings.qr_code_path !== path) await supabase.storage.from("fee-payment-assets").remove([oldSettings.qr_code_path]);
   refresh();
   return { status: "success", message: "Payment QR code uploaded.", data: { url: data.publicUrl } };
 }
