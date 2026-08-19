@@ -62,6 +62,8 @@ export async function getFeeSettings(profile: AuthProfile): Promise<FeeSettings>
     recipientPreference: data.recipient_preference,
     reminderTemplateName: data.reminder_template_name,
     confirmationTemplateName: data.confirmation_template_name,
+    reminderMessageFormat: data.reminder_message_format ?? "Dear {student_name}, your {fee_head} of {outstanding_amount} is pending from {due_date}. Please make payment at the earliest. - {institute_name}",
+    confirmationMessageFormat: data.confirmation_message_format ?? "Payment received for {student_name}. Receipt {receipt_no}, Date {payment_date}, Amount {amount}, Mode {payment_mode}, Ref {reference_no}. Pending balance: {remaining_outstanding}. Thank you - {institute_name}",
     upiId: data.upi_id ?? null,
     bankName: data.bank_name ?? null,
     bankAccountName: data.bank_account_name ?? null,
@@ -69,6 +71,7 @@ export async function getFeeSettings(profile: AuthProfile): Promise<FeeSettings>
     bankIfsc: data.bank_ifsc ?? null,
     bankBranch: data.bank_branch ?? null,
     qrCodeUrl: data.qr_code_url ?? null,
+    qrCodePath: data.qr_code_path ?? null,
   };
 }
 
