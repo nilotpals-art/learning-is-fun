@@ -41,7 +41,7 @@ export interface FeeMessage {
   studentName: string;
   messageType: string;
   recipientType: string;
-  recipientPhone: string | null;
+  recipientPhone: string;
   status: string;
   attemptCount: number;
   createdAt: string;
