@@ -58,6 +58,8 @@ export interface FeeSettings {
   recipientPreference: "parent" | "student" | "both";
   reminderTemplateName: string;
   confirmationTemplateName: string;
+  reminderMessageFormat: string;
+  confirmationMessageFormat: string;
   upiId: string | null;
   bankName: string | null;
   bankAccountName: string | null;
@@ -65,6 +67,7 @@ export interface FeeSettings {
   bankIfsc: string | null;
   bankBranch: string | null;
   qrCodeUrl: string | null;
+  qrCodePath: string | null;
 }
 
 export interface FeeSummary {
