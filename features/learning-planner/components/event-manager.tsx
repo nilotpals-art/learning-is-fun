@@ -39,50 +39,22 @@ import {
   schedulePendingReplacementAction,
 } from "@/features/learning-planner/actions/event-actions";
 import {
-  CALENDAR_EVENT_TYPES,
   EXPLICIT_CALENDAR_EVENT_TYPES,
   type EventOverlapConflict,
   type PlannerOptions,
   type ScheduleEvent,
   type ScheduleType,
 } from "@/features/learning-planner/types/learning-planner";
-
-const labels: Record<(typeof CALENDAR_EVENT_TYPES)[number], string> = {
-  regular_class: "Regular Class",
-  extra_class: "Extra Class",
-  mock_test: "Mock Test",
-  exam: "Exam",
-  parent_meeting: "Parent Meeting",
-  holiday: "Holiday",
-};
+import {
+  buildMenuItems,
+  defaultWhatsapp,
+  effectiveEventStatus,
+  eventLabel,
+  eventStatusTone,
+  labels,
+} from "@/features/learning-planner/lib/event-lifecycle";
 
 const select = "h-10 w-full rounded-xl border bg-card px-3";
-
-function defaultWhatsapp(type: ScheduleType) {
-  return ["extra_class", "mock_test", "exam", "parent_meeting", "holiday"].includes(type);
-}
-
-function effectiveEventStatus(event: ScheduleEvent) {
-  if (event.status !== "scheduled") return event.status;
-  if (!event.endTime) return event.status;
-  const endAt = new Date(`${event.eventDate}T${event.endTime}:00`);
-  if (Number.isNaN(endAt.getTime())) return event.status;
-  return endAt.getTime() < Date.now() ? "completed" : event.status;
-}
-
-function eventStatusTone(status: ScheduleEvent["status"]) {
-  if (status === "cancelled") return "bg-red-50 text-red-700 ring-1 ring-red-200";
-  if (status === "completed") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
-  if (status === "rescheduled") return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
-  return "bg-sky-50 text-sky-700 ring-1 ring-sky-200";
-}
-
-function eventLabel(event: ScheduleEvent) {
-  if (event.reschedulePending) return "Reschedule Pending";
-  if (event.scheduleType === "extra_class") return "Extra Class";
-  const status = effectiveEventStatus(event);
-  return status === "scheduled" ? "Scheduled" : status.charAt(0).toUpperCase() + status.slice(1);
-}
 
 function EventDialog({
   open,
@@ -297,14 +269,114 @@ function EventDialog({
   );
 }
 
-function LifecycleDialog({
+function CancelDialog({
   event,
-  kind,
   onClose,
 }: {
   event: ScheduleEvent;
-  kind: "cancel" | "reschedule" | "replacement";
   onClose: () => void;
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [cancelType, setCancelType] = useState<"final" | "reschedule_later">("final");
+  const canRescheduleLater = event.scheduleType === "regular_class";
+  const isRescheduleLater = canRescheduleLater && cancelType === "reschedule_later";
+
+  const submit = (form: FormData) =>
+    start(async () => {
+      const result = event.isProjected
+        ? await persistRecurringOccurrenceExceptionAction({
+            classScheduleId: event.classScheduleId,
+            occurrenceDate: event.sourceOccurrenceDate,
+            action: "cancel",
+            reason: form.get("reason"),
+            reschedulePending: isRescheduleLater,
+            whatsappRequested: form.get("whatsappRequested") === "on",
+          })
+        : await cancelScheduleEventAction({
+            eventId: event.id,
+            reason: form.get("reason"),
+            reschedulePending: isRescheduleLater,
+            whatsappRequested: form.get("whatsappRequested") === "on",
+          });
+      setFeedback(result.message);
+      if (result.status === "success") {
+        onClose();
+        router.refresh();
+      }
+    });
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Cancel Class</DialogTitle>
+          <DialogDescription>
+            {event.title} · {event.eventDate} {event.startTime}
+          </DialogDescription>
+        </DialogHeader>
+        <form id="cancel-form" action={submit} className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Cancellation type</p>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="cancelType"
+                value="final"
+                checked={cancelType === "final"}
+                onChange={() => setCancelType("final")}
+              />
+              Cancel Final — permanently cancelled, no reschedule
+            </label>
+            {canRescheduleLater && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="cancelType"
+                  value="reschedule_later"
+                  checked={cancelType === "reschedule_later"}
+                  onChange={() => setCancelType("reschedule_later")}
+                />
+                Reschedule Later — new date/time to be confirmed
+              </label>
+            )}
+          </div>
+          <label className="grid gap-1 text-sm">
+            Reason
+            <Input name="reason" required minLength={3} />
+          </label>
+          <label className="flex gap-2 text-sm">
+            <input name="whatsappRequested" type="checkbox" defaultChecked />
+            Send WhatsApp Notification
+          </label>
+          {feedback && (
+            <p role="status" className="text-sm">
+              {feedback}
+            </p>
+          )}
+        </form>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <Button type="submit" form="cancel-form" variant="destructive" disabled={pending}>
+            {pending ? "Saving…" : isRescheduleLater ? "Reschedule Later" : "Cancel Final"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RescheduleDialog({
+  event,
+  onClose,
+  kind,
+}: {
+  event: ScheduleEvent;
+  onClose: () => void;
+  kind: "reschedule" | "replacement";
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -317,43 +389,38 @@ function LifecycleDialog({
         approveOverlap: form.get("approveOverlap") === "on",
         overlapReason: form.get("overlapReason"),
       };
+      const whatsappRequested = form.get("whatsappRequested") === "on";
       const result = event.isProjected
         ? await persistRecurringOccurrenceExceptionAction({
             classScheduleId: event.classScheduleId,
             occurrenceDate: event.sourceOccurrenceDate,
-            action: kind === "cancel" ? "cancel" : "reschedule",
+            action: "reschedule",
             reason: form.get("reason"),
-            reschedulePending: form.get("reschedulePending") === "on",
-            whatsappRequested: form.get("whatsappRequested") === "on",
-            newDate: kind === "cancel" ? undefined : form.get("newDate"),
-            newStartTime: kind === "cancel" ? undefined : form.get("newStartTime"),
-            newEndTime: kind === "cancel" ? undefined : form.get("newEndTime"),
+            whatsappRequested,
+            newDate: form.get("newDate"),
+            newStartTime: form.get("newStartTime"),
+            newEndTime: form.get("newEndTime"),
             ...overlap,
           })
-        : kind === "cancel"
-          ? await cancelScheduleEventAction({
+        : kind === "replacement"
+          ? await schedulePendingReplacementAction({
               eventId: event.id,
+              newDate: form.get("newDate"),
+              newStartTime: form.get("newStartTime"),
+              newEndTime: form.get("newEndTime"),
               reason: form.get("reason"),
-              reschedulePending: form.get("reschedulePending") === "on",
-              whatsappRequested: form.get("whatsappRequested") === "on",
+              whatsappRequested,
+              ...overlap,
             })
-          : kind === "replacement"
-            ? await schedulePendingReplacementAction({
-                eventId: event.id,
-                newDate: form.get("newDate"),
-                newStartTime: form.get("newStartTime"),
-                newEndTime: form.get("newEndTime"),
-                reason: form.get("reason"),
-                ...overlap,
-              })
-            : await rescheduleScheduleEventAction({
-                eventId: event.id,
-                newDate: form.get("newDate"),
-                newStartTime: form.get("newStartTime"),
-                newEndTime: form.get("newEndTime"),
-                reason: form.get("reason"),
-                ...overlap,
-              });
+          : await rescheduleScheduleEventAction({
+              eventId: event.id,
+              newDate: form.get("newDate"),
+              newStartTime: form.get("newStartTime"),
+              newEndTime: form.get("newEndTime"),
+              reason: form.get("reason"),
+              whatsappRequested,
+              ...overlap,
+            });
       setFeedback(result.message);
       setConflicts(result.status === "conflict" ? result.conflicts : []);
       if (result.status === "success") {
@@ -367,49 +434,35 @@ function LifecycleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {kind === "cancel"
-              ? "Cancel Class"
-              : kind === "replacement"
-                ? "Schedule New Date/Time"
-                : "Reschedule Class"}
+            {kind === "replacement" ? "Schedule New Date/Time" : "Reschedule Class"}
           </DialogTitle>
           <DialogDescription>
             {event.title} · {event.eventDate} {event.startTime}
           </DialogDescription>
         </DialogHeader>
-        <form id="lifecycle-form" action={submit} className="space-y-4">
-          {kind !== "cancel" && (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <label className="grid gap-1 text-sm">
-                New Date
-                <Input name="newDate" type="date" required />
-              </label>
-              <label className="grid gap-1 text-sm">
-                Start
-                <Input name="newStartTime" type="time" required />
-              </label>
-              <label className="grid gap-1 text-sm">
-                End
-                <Input name="newEndTime" type="time" required />
-              </label>
-            </div>
-          )}
+        <form id="reschedule-form" action={submit} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="grid gap-1 text-sm">
+              New Date
+              <Input name="newDate" type="date" required />
+            </label>
+            <label className="grid gap-1 text-sm">
+              Start
+              <Input name="newStartTime" type="time" required />
+            </label>
+            <label className="grid gap-1 text-sm">
+              End
+              <Input name="newEndTime" type="time" required />
+            </label>
+          </div>
           <label className="grid gap-1 text-sm">
             Reason
             <Input name="reason" required minLength={3} />
           </label>
-          {kind === "cancel" && (
-            <>
-              <label className="flex gap-2 text-sm">
-                <input name="reschedulePending" type="checkbox" />
-                Rescheduled class details will be updated later
-              </label>
-              <label className="flex gap-2 text-sm">
-                <input name="whatsappRequested" type="checkbox" defaultChecked />
-                Send WhatsApp Notification
-              </label>
-            </>
-          )}
+          <label className="flex gap-2 text-sm">
+            <input name="whatsappRequested" type="checkbox" defaultChecked />
+            Send WhatsApp Notification
+          </label>
           {feedback && (
             <p role="status" className="text-sm">
               {feedback}
@@ -438,12 +491,7 @@ function LifecycleDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             Close
           </Button>
-          <Button
-            type="submit"
-            form="lifecycle-form"
-            variant={kind === "cancel" ? "destructive" : "default"}
-            disabled={pending}
-          >
+          <Button type="submit" form="reschedule-form" disabled={pending}>
             {pending ? "Saving…" : "Confirm"}
           </Button>
         </DialogFooter>
@@ -463,9 +511,10 @@ export function EventManager({
   const [, start] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
   const [related, setRelated] = useState<ScheduleEvent | null>(null);
-  const [lifecycle, setLifecycle] = useState<{
+  const [cancelEvent, setCancelEvent] = useState<ScheduleEvent | null>(null);
+  const [rescheduleDialog, setRescheduleDialog] = useState<{
     event: ScheduleEvent;
-    kind: "cancel" | "reschedule" | "replacement";
+    kind: "reschedule" | "replacement";
   } | null>(null);
 
   return (
@@ -511,7 +560,6 @@ export function EventManager({
             <TableBody>
               {events.map((event) => {
                 const status = effectiveEventStatus(event);
-                const isCompleted = status === "completed";
                 const rowTone =
                   event.status === "cancelled"
                     ? "bg-red-50/70"
@@ -522,36 +570,16 @@ export function EventManager({
                         : event.scheduleType === "extra_class"
                           ? "bg-sky-50/70"
                           : "bg-slate-50/40";
-                const menuItems = [] as Array<{ label: string; onSelect: () => void; danger?: boolean }>;
 
-                if (event.scheduleType === "regular_class" && !event.isProjected) {
-                  menuItems.push({ label: "Create Extra Class", onSelect: () => { setRelated(event); setCreateOpen(true); } });
-                }
-
-                if (event.isProjected && event.scheduleType === "regular_class") {
-                  menuItems.push({ label: "Cancel Class", onSelect: () => setLifecycle({ event, kind: "cancel" }) });
-                  menuItems.push({ label: "Reschedule Class", onSelect: () => setLifecycle({ event, kind: "reschedule" }) });
-                }
-
-                if (!event.isProjected && event.reschedulePending) {
-                  menuItems.push({ label: "Schedule New Date/Time", onSelect: () => setLifecycle({ event, kind: "replacement" }) });
-                }
-
-                if (!isCompleted && (event.status === "scheduled" || event.status === "rescheduled")) {
-                  menuItems.push({ label: event.status === "rescheduled" ? "Reschedule Again" : "Reschedule", onSelect: () => setLifecycle({ event, kind: "reschedule" }) });
-                  if (!event.isProjected && event.status === "scheduled") {
-                    menuItems.push({ label: "Mark Complete", onSelect: () => start(async () => { await completeScheduleEventAction({ eventId: event.id }); router.refresh(); }) });
-                  }
-                  menuItems.push({ label: "Cancel", onSelect: () => setLifecycle({ event, kind: "cancel" }), danger: true });
-                }
-
-                if (!event.isProjected) {
-                  menuItems.push({ label: "View History", onSelect: () => router.push(`/learning-planner/history?event=${event.id}`) });
-                }
-
-                if (event.scheduleType === "exam") {
-                  menuItems.push({ label: "Results", onSelect: () => router.push(`/learning-planner/exam-results/${event.id}`) });
-                }
+                const menuItems = buildMenuItems(
+                  event,
+                  status,
+                  () => setCancelEvent(event),
+                  (kind) => setRescheduleDialog({ event, kind }),
+                  () => { setRelated(event); setCreateOpen(true); },
+                  (path: string) => router.push(path),
+                  () => start(async () => { await completeScheduleEventAction({ eventId: event.id }); router.refresh(); }),
+                );
 
                 return (
                   <TableRow key={event.id} className={rowTone}>
@@ -559,7 +587,7 @@ export function EventManager({
                     <TableCell>{event.startTime ?? "All day"}{event.endTime ? `–${event.endTime}` : ""}</TableCell>
                     <TableCell>
                       <div className="font-medium">{event.title}</div>
-                      <div className="text-xs text-muted-foreground">{labels[event.scheduleType as keyof typeof labels] ?? event.scheduleType.replaceAll("_", " ")}</div>
+                      <div className="text-xs text-muted-foreground">{labels[event.scheduleType]}</div>
                     </TableCell>
                     <TableCell>{event.batchName ?? "Institute-wide"}</TableCell>
                     <TableCell>{event.subjectName ?? "General / Combined Assessment"}</TableCell>
@@ -602,11 +630,17 @@ export function EventManager({
         options={options}
         relatedEvent={related}
       />
-      {lifecycle && (
-        <LifecycleDialog
-          event={lifecycle.event}
-          kind={lifecycle.kind}
-          onClose={() => setLifecycle(null)}
+      {cancelEvent && (
+        <CancelDialog
+          event={cancelEvent}
+          onClose={() => setCancelEvent(null)}
+        />
+      )}
+      {rescheduleDialog && (
+        <RescheduleDialog
+          event={rescheduleDialog.event}
+          kind={rescheduleDialog.kind}
+          onClose={() => setRescheduleDialog(null)}
         />
       )}
     </div>

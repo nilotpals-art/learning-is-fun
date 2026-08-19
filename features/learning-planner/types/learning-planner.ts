@@ -49,7 +49,7 @@ export interface CreateScheduleInput { branchId?: string; academicYearId: string
 export interface UpdateScheduleInput extends CreateScheduleInput { id: string }
 export interface CreateEventInput { branchId?: string; academicYearId: string; batchId?: string; classScheduleId?: string; subjectId?: string; relatedEventId?: string; eventDate: string; startTime?: string; endTime?: string; scheduleType: ScheduleType; title: string; description?: string; room?: string; notificationRequired: boolean; whatsappRequested?: boolean }
 export interface EventOverlapConflict { kind:"recurring_timetable"|"exception_event";sameBatch:boolean;batchId:string;batchName:string;classScheduleId:string|null;eventId:string|null;date:string;startTime:string;endTime:string }
-export interface RescheduleEventInput { eventId: string; newDate: string; newStartTime: string; newEndTime: string; reason: string; approveOverlap?:boolean; overlapReason?:string }
+export interface RescheduleEventInput { eventId: string; newDate: string; newStartTime: string; newEndTime: string; reason: string; approveOverlap?:boolean; overlapReason?:string; whatsappRequested?:boolean }
 export interface RecurringOccurrenceActionInput { classScheduleId:string;occurrenceDate:string;action:"cancel"|"reschedule";reason:string;reschedulePending?:boolean;newDate?:string;newStartTime?:string;newEndTime?:string;approveOverlap?:boolean;overlapReason?:string;whatsappRequested?:boolean }
 export interface CancelEventInput { eventId: string; reason: string }
 export interface CompleteEventInput { eventId: string }

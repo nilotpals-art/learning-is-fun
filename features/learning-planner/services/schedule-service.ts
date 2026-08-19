@@ -24,7 +24,7 @@ export async function listPlannerOptions(profile: AuthProfile): Promise<PlannerO
 
 export async function listClassSchedules(profile: AuthProfile): Promise<ClassSchedule[]> {
   const instituteId = scope(profile); const supabase = await createClient();
-  let query = supabase.from("class_schedules").select("id,branch_id,academic_year_id,batch_id,subject_id,day_of_week,start_time,end_time,schedule_type,room,effective_from,effective_to,is_active,academic_year:academic_years!class_schedules_academic_year_fkey(name,start_date,end_date),batch:batches!class_schedules_batch_fkey(name),subject:subjects!class_schedules_subject_fkey(subject_name)").eq("institute_id", instituteId).order("day_of_week").order("start_time");
+  let query = supabase.from("class_schedules").select("id,branch_id,academic_year_id,batch_id,subject_id,day_of_week,start_time,end_time,schedule_type,room,effective_from,effective_to,is_active,academic_year:academic_years!class_schedules_academic_year_fkey(name,start_date,end_date),batch:batches!class_schedules_batch_fkey!inner(name),subject:subjects!class_schedules_subject_fkey(subject_name)").eq("institute_id", instituteId).eq("is_active", true).eq("batch.is_active", true).order("day_of_week").order("start_time");
   if (profile.branchId) query = query.eq("branch_id", profile.branchId); const { data, error } = await query; if (error) throw error; return (data as unknown as ScheduleRow[]).map(mapSchedule);
 }
 

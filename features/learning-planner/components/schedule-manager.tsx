@@ -53,6 +53,8 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
   const [newDate, setNewDate] = useState("");
   const [newStartTime, setNewStartTime] = useState("");
   const [newEndTime, setNewEndTime] = useState("");
+  const [cancelType, setCancelType] = useState<"final" | "reschedule_later">("final");
+  const [whatsappRequested, setWhatsappRequested] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const openDialog = (schedule: ClassSchedule, action: "cancel" | "reschedule") => {
@@ -63,6 +65,8 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
     setNewDate("");
     setNewStartTime("");
     setNewEndTime("");
+    setCancelType("final");
+    setWhatsappRequested(true);
     setError(null);
   };
 
@@ -73,6 +77,8 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
     setNewDate("");
     setNewStartTime("");
     setNewEndTime("");
+    setCancelType("final");
+    setWhatsappRequested(true);
     setError(null);
   };
 
@@ -97,6 +103,7 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
     }
 
     start(async () => {
+      const isRescheduleLater = pendingDialog.action === "cancel" && cancelType === "reschedule_later";
       const result = await persistRecurringOccurrenceExceptionAction({
         classScheduleId: pendingDialog.schedule.id,
         occurrenceDate: selectedOccurrence,
@@ -105,8 +112,8 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
         newDate: pendingDialog.action === "reschedule" ? newDate : undefined,
         newStartTime: pendingDialog.action === "reschedule" ? newStartTime : undefined,
         newEndTime: pendingDialog.action === "reschedule" ? newEndTime : undefined,
-        reschedulePending: false,
-        whatsappRequested: false,
+        reschedulePending: isRescheduleLater,
+        whatsappRequested,
       });
 
       if (result.status === "success") {
@@ -214,6 +221,30 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
                 <Input value={reason} onChange={(event) => setReason(event.target.value)} minLength={3} placeholder="Brief administrative reason" />
               </label>
 
+              {pendingDialog.action === "cancel" && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Cancellation type</p>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="cancelType"
+                      checked={cancelType === "final"}
+                      onChange={() => setCancelType("final")}
+                    />
+                    Cancel Final — permanently cancelled, no reschedule
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="cancelType"
+                      checked={cancelType === "reschedule_later"}
+                      onChange={() => setCancelType("reschedule_later")}
+                    />
+                    Reschedule Later — new date/time to be confirmed
+                  </label>
+                </div>
+              )}
+
               {pendingDialog.action === "reschedule" && (
                 <div className="grid gap-3 sm:grid-cols-3">
                   <label className="grid gap-1 text-sm">
@@ -230,6 +261,15 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
                   </label>
                 </div>
               )}
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={whatsappRequested}
+                  onChange={(event) => setWhatsappRequested(event.target.checked)}
+                />
+                Send WhatsApp Notification
+              </label>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>

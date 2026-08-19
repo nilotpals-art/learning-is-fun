@@ -147,7 +147,7 @@ export async function listCalendarReadModel(
   toDate: string,
   batchWindows?: Map<string, Array<{ fromDate: string; toDate: string }>>,
 ): Promise<ScheduleEvent[]> {
-  const [schedules, persistedEvents, holidayData, activeBatchIds] = await Promise.all([
+  const [schedules, allPersistedEvents, holidayData, activeBatchIds] = await Promise.all([
     listClassSchedules(profile),
     listScheduleEvents(profile, { dateFrom: fromDate, dateTo: toDate }),
     getHolidayCalendar(profile, fromDate, toDate).catch(() => ({
@@ -156,6 +156,9 @@ export async function listCalendarReadModel(
     })),
     listActiveBatchIds(profile),
   ]);
+  const persistedEvents = allPersistedEvents.filter(
+    (event) => !event.batchId || activeBatchIds.has(event.batchId),
+  );
   const nonWorkingHolidayDates = new Set(
     holidayData.holidays
       .filter((holiday) => holiday.imported && holiday.observedAsHoliday === true)
