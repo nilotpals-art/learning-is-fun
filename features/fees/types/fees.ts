@@ -17,10 +17,13 @@ export interface FeeDue {
   netAmount: number;
   outstanding: number;
   status: string;
+  scheduleType: "one_time" | "monthly" | "quarterly" | "custom" | null;
 }
 
 export interface FeePayment {
   id: string;
+  studentId: string;
+  academicYearId: string;
   studentName: string;
   academicYearName: string;
   paymentModeName: string;
@@ -55,6 +58,13 @@ export interface FeeSettings {
   recipientPreference: "parent" | "student" | "both";
   reminderTemplateName: string;
   confirmationTemplateName: string;
+  upiId: string | null;
+  bankName: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankIfsc: string | null;
+  bankBranch: string | null;
+  qrCodeUrl: string | null;
 }
 
 export interface FeeSummary {
