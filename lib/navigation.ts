@@ -101,10 +101,10 @@ export const navigation: readonly NavigationItem[] = [
   group("Fees", "/fees", "fees", [
     item("Overview", "/fees", "dashboard"),
     item("Fee Structures", "/fees/structures", "academics"),
-    item("Student Fees", "/fees/student-fees", "users"),
+    item("Pending Fees", "/fees/student-fees", "users"),
     item("Collect Payment", "/fees/collect", "finance"),
     item("Payments", "/fees/payments", "finance"),
-    item("Reports", "/fees/reports", "reports"),
+    item("Reports & Ledger", "/fees/reports", "reports"),
     item("WhatsApp Outbox", "/fees/messages", "communication"),
     item("Settings", "/fees/settings", "settings"),
   ]),
@@ -118,7 +118,7 @@ export const navigation: readonly NavigationItem[] = [
   item("My Results", "/student/results", "marks", ["Student"]),
   item("My Fees", "/student/fees", "fees", ["Student"]),
   item("Notifications", "/student/notifications", "communication", ["Student"]),
-  item("My Fees", "/parent/fees", "fees", ["Parent"]),
+  item("Fees", "/parent/fees", "fees", ["Parent"]),
   item("Results", "/parent/results", "marks", ["Parent"]),
   item("Logout", "/logout", "logout", allPortalRoles),
 ];
