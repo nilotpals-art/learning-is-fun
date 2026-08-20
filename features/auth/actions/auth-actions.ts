@@ -27,6 +27,8 @@ const INACTIVE_MESSAGE =
   "Your account is inactive. Please contact the institute administrator.";
 const OTP_ERROR_MESSAGE =
   "We could not send a verification code. Please try again.";
+const SESSION_SECURITY_ERROR_MESSAGE =
+  "We could not secure this login session. Please try again.";
 
 function logOtpRequestRejection(reason: string): void {
   console.warn("Authentication OTP request rejected", { reason });
@@ -157,15 +159,26 @@ export async function verifyOtp(input: unknown): Promise<AuthActionResult> {
     const profile = await getCurrentProfile();
 
     if (!profile) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       await clearPendingEmail();
       return { status: "redirect", destination: "/unauthorized" };
     }
 
     if (!profile.isActive) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       await clearPendingEmail();
       return { status: "redirect", destination: "/inactive" };
+    }
+
+    const { error: sessionError } = await supabase.auth.signOut({ scope: "others" });
+
+    if (sessionError) {
+      console.error("Authentication single-session enforcement failed", {
+        code: sessionError.code ?? "unknown",
+      });
+      await supabase.auth.signOut({ scope: "local" });
+      await clearPendingEmail();
+      return { status: "error", message: SESSION_SECURITY_ERROR_MESSAGE };
     }
 
     await clearPendingEmail();
