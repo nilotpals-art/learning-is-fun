@@ -6,6 +6,7 @@ export const ROLE = {
   PARENT: "Parent",
   STAFF: "Staff",
   TEACHER: "Teacher",
+  ACCOUNTANT: "Accountant",
 } as const;
 
 export type ApplicationRole = (typeof ROLE)[keyof typeof ROLE];
@@ -15,6 +16,8 @@ export const ADMINISTRATOR_ROLES = [
   ROLE.SUPER_ADMIN,
   ROLE.INSTITUTE_ADMIN,
 ] as const;
+
+export const STAFF_ROLES = [ROLE.TEACHER, ROLE.ACCOUNTANT] as const;
 
 const ROLE_ALIASES: Readonly<Record<string, ApplicationRole>> = {
   admin: ROLE.ADMINISTRATOR,
@@ -28,6 +31,7 @@ const ROLE_ALIASES: Readonly<Record<string, ApplicationRole>> = {
   parent: ROLE.PARENT,
   staff: ROLE.STAFF,
   teacher: ROLE.TEACHER,
+  accountant: ROLE.ACCOUNTANT,
 };
 
 export function normalizeApplicationRole(role: string | null): ApplicationRole | null {
@@ -37,4 +41,14 @@ export function normalizeApplicationRole(role: string | null): ApplicationRole |
 
 export function isSuperAdmin(role: string | null): boolean {
   return normalizeApplicationRole(role) === ROLE.SUPER_ADMIN;
+}
+
+export function isAdministratorRole(role: string | null): boolean {
+  const normalized = normalizeApplicationRole(role);
+  return normalized !== null && ADMINISTRATOR_ROLES.includes(normalized as (typeof ADMINISTRATOR_ROLES)[number]);
+}
+
+export function isStaffRole(role: string | null): boolean {
+  const normalized = normalizeApplicationRole(role);
+  return normalized === ROLE.TEACHER || normalized === ROLE.ACCOUNTANT;
 }
