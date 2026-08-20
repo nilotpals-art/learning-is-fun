@@ -100,6 +100,14 @@ export async function getCurrentProfile(): Promise<AuthProfile | null> {
     return null;
   }
 
+  const { data: sessionIsActive, error: sessionError } = await supabase.rpc(
+    "is_current_auth_session_active"
+  );
+
+  if (sessionError || sessionIsActive !== true) {
+    return null;
+  }
+
   const { data, error } = await supabase
     .from("profiles")
     .select(
