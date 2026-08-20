@@ -1,8 +1,6 @@
 "use client";
 
 import { Bell, ChevronDown, GitBranch, LogOut, UserRound } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 
 import {
   Avatar,
@@ -18,7 +16,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { logout } from "@/features/auth/actions/auth-actions";
 import type { NavigationItem } from "@/lib/navigation";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
 
@@ -46,15 +43,8 @@ export function AppHeader({
   navigationItems,
   user,
 }: AppHeaderProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-
   function handleLogout() {
-    startTransition(async () => {
-      await logout();
-      router.replace("/login");
-      router.refresh();
-    });
+    window.location.assign("/logout");
   }
 
   return (
@@ -65,8 +55,8 @@ export function AppHeader({
       />
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold sm:text-base">{instituteName}</p>
-        <p className="hidden text-xs text-muted-foreground sm:block">Learning Is Fun ERP</p>
+        <p className="truncate text-sm font-semibold sm:text-base">Learning Is Fun!!!</p>
+        <p className="hidden text-xs text-muted-foreground sm:block">Learn, Explore &amp; Innovate</p>
       </div>
 
       <Button
@@ -115,9 +105,9 @@ export function AppHeader({
             Profile
             <span className="ml-auto text-xs text-muted-foreground">Soon</span>
           </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onClick={handleLogout} disabled={isPending}>
+          <DropdownMenuItem variant="destructive" onClick={handleLogout}>
             <LogOut aria-hidden="true" />
-            {isPending ? "Signing out…" : "Logout"}
+            Logout
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
