@@ -48,7 +48,7 @@ export function QuestionPaperManager({ papers, questions, options }: { papers: P
   };
 
   return <div className="space-y-6">
-    <div className="grid gap-3 md:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Link className={buttonVariants()} href="/practice-work/question-bank/generate">Generate with AI</Link>
       <Link className={buttonVariants({ variant: "outline" })} href="/practice-work">Import Questions</Link>
       <Button variant={createMode === "manual" ? "default" : "outline"} onClick={() => setCreateMode((value) => value === "manual" ? null : "manual")}>Create Manually</Button>
@@ -63,17 +63,36 @@ export function QuestionPaperManager({ papers, questions, options }: { papers: P
         <label className="text-sm font-medium md:col-span-3">Instructions<textarea name="instructions" defaultValue="ANSWER ALL QUESTIONS." className="mt-1 min-h-20 w-full rounded-xl border bg-card p-3" /></label>
         <div className="md:col-span-3"><Input placeholder="Search available questions" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <div className="max-h-[30rem] space-y-2 overflow-auto md:col-span-3">{filtered.map((q) => <label key={q.id} className="flex items-start gap-3 rounded-xl border p-3 text-sm"><input type="checkbox" checked={selectedQuestions.includes(q.id)} onChange={(e) => setSelectedQuestions((current) => e.target.checked ? [...current, q.id] : current.filter((id) => id !== q.id))} /><span className="flex-1"><strong>{q.questionText}</strong><span className="mt-1 block text-xs text-muted-foreground">{[q.boardName, q.className, q.subjectName, `${q.suggestedMarks ?? 1} marks`].filter(Boolean).join(" · ")}</span></span></label>)}</div>
-        <div className="flex gap-2 md:col-span-3"><Button disabled={pending || !selectedQuestions.length}>Create Editable Paper ({selectedQuestions.length})</Button><Button type="button" variant="outline" onClick={() => { setCreateMode(null); setSelectedQuestions([]); }}>Cancel</Button></div>
+        <div className="flex flex-wrap gap-2 md:col-span-3"><Button disabled={pending || !selectedQuestions.length}>Create Editable Paper ({selectedQuestions.length})</Button><Button type="button" variant="outline" onClick={() => { setCreateMode(null); setSelectedQuestions([]); }}>Cancel</Button></div>
       </form>
     </CardContent></Card> : null}
 
     {createMode === "combine" ? <Card><CardHeader><CardTitle>Combine 2 or 3 Existing Papers</CardTitle></CardHeader><CardContent><form action={(form) => finish(() => combineQuestionPapersAction({ sourcePaperIds: selectedPapers, paperType: form.get("paperType") }))} className="space-y-4">
       <label className="block max-w-sm text-sm font-medium">New Paper Type<Input name="paperType" required defaultValue="COMBINED" /></label>
-      <div className="grid gap-3 lg:grid-cols-2">{papers.map((paper) => <label key={paper.id} className="flex items-center gap-3 rounded-xl border p-4"><input type="checkbox" checked={selectedPapers.includes(paper.id)} disabled={!selectedPapers.includes(paper.id) && selectedPapers.length >= 3} onChange={(e) => setSelectedPapers((current) => e.target.checked ? [...current, paper.id] : current.filter((id) => id !== paper.id))} /><span className="flex-1"><strong>{paper.title}</strong><span className="block text-xs text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks</span></span><Badge>{paper.status}</Badge></label>)}</div>
-      <div className="flex gap-2"><Button disabled={pending || selectedPapers.length < 2}>Combine Selected ({selectedPapers.length})</Button><Button type="button" variant="outline" onClick={() => { setCreateMode(null); setSelectedPapers([]); }}>Cancel</Button></div>
+      <div className="divide-y rounded-xl border">{papers.map((paper) => <label key={paper.id} className="flex items-center gap-3 px-3 py-2.5"><input type="checkbox" checked={selectedPapers.includes(paper.id)} disabled={!selectedPapers.includes(paper.id) && selectedPapers.length >= 3} onChange={(e) => setSelectedPapers((current) => e.target.checked ? [...current, paper.id] : current.filter((id) => id !== paper.id))} /><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{paper.title}</strong><span className="block text-xs text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks</span></span><Badge>{paper.status}</Badge></label>)}</div>
+      <div className="flex flex-wrap gap-2"><Button disabled={pending || selectedPapers.length < 2}>Combine Selected ({selectedPapers.length})</Button><Button type="button" variant="outline" onClick={() => { setCreateMode(null); setSelectedPapers([]); }}>Cancel</Button></div>
     </form></CardContent></Card> : null}
 
-    <div className="space-y-3"><h2 className="text-lg font-semibold">Question Papers</h2><div className="grid gap-4 lg:grid-cols-2">{papers.length ? papers.map((paper) => <Card key={paper.id}><CardContent className="space-y-3 p-5"><div className="flex justify-between gap-3"><p className="font-semibold">{paper.title}</p><Badge>{paper.status}</Badge></div><p className="text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks{paper.assignmentCount ? ` · Assigned to ${paper.assignmentCount}` : ""}</p><div className="flex flex-wrap gap-2"><Link className={buttonVariants({ size: "sm" })} href={`/practice-work/papers/${paper.id}`}>Edit / Preview</Link><a className={buttonVariants({ size: "sm", variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">PDF</a><Link className={buttonVariants({ size: "sm", variant: "outline" })} href="/practice-work/assignments">Assign</Link><Button size="sm" variant="destructive" disabled={pending} onClick={() => remove(paper)}>Delete</Button></div></CardContent></Card>) : <Card><CardContent className="p-8 text-center text-muted-foreground">No question papers yet.</CardContent></Card>}</div></div>
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Question Papers</h2><span className="text-xs text-muted-foreground">{papers.length} paper{papers.length === 1 ? "" : "s"}</span></div>
+      {papers.length ? <div className="overflow-hidden rounded-xl border bg-card">
+        <div className="hidden grid-cols-[minmax(0,1fr)_88px_90px_110px_auto] gap-3 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground md:grid">
+          <span>Paper</span><span>Status</span><span>Questions</span><span>Assigned</span><span className="text-right">Actions</span>
+        </div>
+        <div className="divide-y">{papers.map((paper) => <div key={paper.id} className="grid gap-2 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_88px_90px_110px_auto] md:items-center md:gap-3">
+          <div className="min-w-0"><Link href={`/practice-work/papers/${paper.id}`} className="block truncate text-sm font-medium hover:underline">{paper.title}</Link><p className="mt-0.5 text-xs text-muted-foreground md:hidden">{paper.questionCount} questions · {paper.totalMarks} marks · {paper.assignmentCount ?? 0} assigned</p></div>
+          <div><Badge>{paper.status}</Badge></div>
+          <span className="hidden text-sm md:block">{paper.questionCount}</span>
+          <span className="hidden text-sm md:block">{paper.assignmentCount ?? 0}</span>
+          <div className="flex flex-wrap gap-1.5 md:justify-end">
+            <Link className={buttonVariants({ size: "sm", variant: "outline" })} href={`/practice-work/papers/${paper.id}`}>Open</Link>
+            <a className={buttonVariants({ size: "sm", variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">PDF</a>
+            <Link className={buttonVariants({ size: "sm", variant: "outline" })} href="/practice-work/assignments">Assign</Link>
+            <Button size="sm" variant="destructive" disabled={pending} onClick={() => remove(paper)}>Delete</Button>
+          </div>
+        </div>)}</div>
+      </div> : <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No question papers yet.</div>}
+    </section>
     {message && <p role="status" className="text-sm">{message}</p>}
   </div>;
 }
