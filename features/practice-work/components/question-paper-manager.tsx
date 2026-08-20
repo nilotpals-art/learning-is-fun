@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { combineQuestionPapersAction, createQuestionPaperAction } from "@/features/practice-work/actions/question-paper-actions";
+import { combineQuestionPapersAction, createQuestionPaperAction, deleteQuestionPaperAction } from "@/features/practice-work/actions/question-paper-actions";
 import type { BankQuestion, PracticeOptions, PracticeSet } from "@/features/practice-work/types/practice-work";
 
 type CreateMode = "manual" | "combine" | null;
@@ -33,6 +33,19 @@ export function QuestionPaperManager({ papers, questions, options }: { papers: P
       router.push(`/practice-work/papers/${result.data.id}`);
     }
   });
+
+  const remove = (paper: PracticeSet) => {
+    const assigned = paper.assignmentCount ?? 0;
+    const warning = assigned > 0
+      ? `Permanently delete ${paper.title}?\n\nThis paper is assigned to ${assigned} student${assigned === 1 ? "" : "s"}. Deleting it will remove those assignments from student portals and permanently delete any attempts and answers for this paper. This cannot be undone.`
+      : `Permanently delete ${paper.title}? This cannot be undone.`;
+    if (!window.confirm(warning)) return;
+    startTransition(async () => {
+      const result = await deleteQuestionPaperAction({ paperId: paper.id });
+      setMessage(result.message);
+      if (result.status === "success") router.refresh();
+    });
+  };
 
   return <div className="space-y-6">
     <div className="grid gap-3 md:grid-cols-4">
@@ -60,7 +73,7 @@ export function QuestionPaperManager({ papers, questions, options }: { papers: P
       <div className="flex gap-2"><Button disabled={pending || selectedPapers.length < 2}>Combine Selected ({selectedPapers.length})</Button><Button type="button" variant="outline" onClick={() => { setCreateMode(null); setSelectedPapers([]); }}>Cancel</Button></div>
     </form></CardContent></Card> : null}
 
-    <div className="space-y-3"><h2 className="text-lg font-semibold">Question Papers</h2><div className="grid gap-4 lg:grid-cols-2">{papers.length ? papers.map((paper) => <Card key={paper.id}><CardContent className="space-y-3 p-5"><div className="flex justify-between gap-3"><p className="font-semibold">{paper.title}</p><Badge>{paper.status}</Badge></div><p className="text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks</p><div className="flex flex-wrap gap-2"><Link className={buttonVariants({ size: "sm" })} href={`/practice-work/papers/${paper.id}`}>Edit / Preview</Link><a className={buttonVariants({ size: "sm", variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">PDF</a><Link className={buttonVariants({ size: "sm", variant: "outline" })} href="/practice-work/assignments">Assign</Link></div></CardContent></Card>) : <Card><CardContent className="p-8 text-center text-muted-foreground">No question papers yet.</CardContent></Card>}</div></div>
+    <div className="space-y-3"><h2 className="text-lg font-semibold">Question Papers</h2><div className="grid gap-4 lg:grid-cols-2">{papers.length ? papers.map((paper) => <Card key={paper.id}><CardContent className="space-y-3 p-5"><div className="flex justify-between gap-3"><p className="font-semibold">{paper.title}</p><Badge>{paper.status}</Badge></div><p className="text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks{paper.assignmentCount ? ` · Assigned to ${paper.assignmentCount}` : ""}</p><div className="flex flex-wrap gap-2"><Link className={buttonVariants({ size: "sm" })} href={`/practice-work/papers/${paper.id}`}>Edit / Preview</Link><a className={buttonVariants({ size: "sm", variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">PDF</a><Link className={buttonVariants({ size: "sm", variant: "outline" })} href="/practice-work/assignments">Assign</Link><Button size="sm" variant="destructive" disabled={pending} onClick={() => remove(paper)}>Delete</Button></div></CardContent></Card>) : <Card><CardContent className="p-8 text-center text-muted-foreground">No question papers yet.</CardContent></Card>}</div></div>
     {message && <p role="status" className="text-sm">{message}</p>}
   </div>;
 }
