@@ -29,7 +29,7 @@ export function QuestionPaperManager({ papers, questions, options }: { papers: P
   return <div className="space-y-6">
     <div className="grid gap-3 md:grid-cols-4">
       <Link className={buttonVariants()} href="/practice-work/question-bank/generate">Generate with AI</Link>
-      <Link className={buttonVariants({ variant: "outline" })} href="/practice-work/question-bank">Import Questions</Link>
+      <Link className={buttonVariants({ variant: "outline" })} href="/practice-work">Import / Review Questions</Link>
       <Button variant="outline" onClick={() => document.getElementById("manual-paper")?.scrollIntoView({ behavior: "smooth" })}>Create Manually</Button>
       <Button variant="outline" onClick={() => document.getElementById("combine-paper")?.scrollIntoView({ behavior: "smooth" })}>Combine Papers</Button>
     </div>
