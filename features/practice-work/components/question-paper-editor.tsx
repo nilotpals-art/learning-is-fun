@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { updateQuestionPaperAction } from "@/features/practice-work/actions/question-paper-actions";
+import { publishPracticeSetAction } from "@/features/practice-work/actions/practice-work-actions";
 import type { PracticeSet } from "@/features/practice-work/types/practice-work";
 
 export function QuestionPaperEditor({ paper }: { paper: PracticeSet }) {
@@ -24,6 +25,14 @@ export function QuestionPaperEditor({ paper }: { paper: PracticeSet }) {
     const result = await updateQuestionPaperAction({ paperId: paper.id, title, instructions, questions });
     setMessage(result.message);
     if (result.status === "success") router.refresh();
+  });
+
+  const publish = () => startTransition(async () => {
+    const saveResult = await updateQuestionPaperAction({ paperId: paper.id, title, instructions, questions });
+    if (saveResult.status !== "success") { setMessage(saveResult.message); return; }
+    const publishResult = await publishPracticeSetAction({ id: paper.id });
+    setMessage(publishResult.message);
+    if (publishResult.status === "success") router.refresh();
   });
 
   const move = (index: number, direction: -1 | 1) => {
@@ -55,7 +64,7 @@ export function QuestionPaperEditor({ paper }: { paper: PracticeSet }) {
       </div>)}
     </div>
 
-    {editable && <Button disabled={pending || !questions.length} onClick={save}>Save Paper</Button>}
+    {editable && <div className="flex flex-wrap gap-2"><Button disabled={pending || !questions.length} onClick={save}>Save Paper</Button><Button disabled={pending || !questions.length} variant="outline" onClick={publish}>Save & Publish for Assignment</Button></div>}
     {message && <p role="status" className="text-sm">{message}</p>}
   </div>;
 }
