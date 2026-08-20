@@ -43,7 +43,7 @@ export async function listAttendanceOptions(instituteId: string): Promise<Attend
 
 export async function loadAttendanceRoster(instituteId: string, values: AttendanceFilterValues): Promise<AttendanceRosterEntry[]> {
   const supabase = await createClient();
-  const [assignments, attendance] = await Promise.all([
+  const [assignments, attendance, onBreak] = await Promise.all([
     supabase.from("student_assignments")
       .select("id, student_id, student:students!student_assignments_student_fkey(name, admission_no)")
       .eq("institute_id", instituteId).eq("academic_year_id", values.academicYearId).eq("batch_id", values.batchId)
@@ -51,24 +51,33 @@ export async function loadAttendanceRoster(instituteId: string, values: Attendan
     supabase.from("student_attendance")
       .select("id, student_id, student_assignment_id, status, remarks, updated_at, marked_by_profile:profiles!student_attendance_marked_by_institute_fkey(name)")
       .eq("institute_id", instituteId).eq("academic_year_id", values.academicYearId).eq("batch_id", values.batchId).eq("attendance_date", values.attendanceDate),
+    supabase.rpc("get_on_break_assignments", {
+      p_institute_id: instituteId,
+      p_academic_year_id: values.academicYearId,
+      p_batch_id: values.batchId,
+      p_on_date: values.attendanceDate,
+    }),
   ]);
-  const error = assignments.error ?? attendance.error;
+  const error = assignments.error ?? attendance.error ?? onBreak.error;
   if (error) throw error;
+  const breakAssignmentIds = new Set((onBreak.data as unknown as string[] | null) ?? []);
   const saved = new Map((attendance.data as unknown as AttendanceRow[]).map((row) => [row.student_assignment_id, row]));
   return (assignments.data as unknown as AssignmentRow[])
     .map((row) => {
       const student = one(row.student);
       const record = saved.get(row.id);
+      const isOnBreak = breakAssignmentIds.has(row.id);
       return {
         assignmentId: row.id,
         studentId: row.student_id,
         admissionNumber: student.admission_no,
         studentName: student.name,
         attendanceId: record?.id ?? null,
-        status: record?.status ?? "Present",
-        remarks: record?.remarks ?? "",
+        status: record?.status ?? (isOnBreak ? "Leave" : "Present"),
+        remarks: record?.remarks ?? (isOnBreak ? "ON BREAK" : ""),
         markedByName: optionalOne(record?.marked_by_profile ?? null)?.name ?? null,
         updatedAt: record?.updated_at ?? null,
+        onBreak: isOnBreak,
       };
     })
     .sort((a, b) => a.studentName.localeCompare(b.studentName));

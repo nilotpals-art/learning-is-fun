@@ -26,6 +26,7 @@ export interface AttendanceRosterEntry {
   remarks: string;
   markedByName: string | null;
   updatedAt: string | null;
+  onBreak: boolean;
 }
 
 export type AttendanceRecordState = "new" | "recorded" | "inconsistent";

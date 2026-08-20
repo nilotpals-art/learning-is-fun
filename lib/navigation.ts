@@ -28,6 +28,7 @@ export type NavigationIconName =
   | "announcements"
   | "reports"
   | "settings"
+  | "rollover"
   | "logout";
 
 export interface NavigationItem {
@@ -83,6 +84,8 @@ export const navigation: readonly NavigationItem[] = [
   group("Student Management", "/students", "graduation-cap", [
     item("Student Master", "/students", "users"),
     item("Academic Assignments", "/students/academic-assignments", "graduation-cap"),
+    item("Academic Year Rollover", "/students/rollover", "rollover"),
+    item("Enrollment Breaks", "/students/enrollment-breaks", "calendar"),
   ]),
   group("Attendance", "/attendance", "attendance", [
     item("Daily Attendance", "/attendance", "attendance"),
@@ -120,6 +123,8 @@ export const navigation: readonly NavigationItem[] = [
   item("Notifications", "/student/notifications", "communication", ["Student"]),
   item("My Fees", "/parent/fees", "fees", ["Parent"]),
   item("Results", "/parent/results", "marks", ["Parent"]),
+  item("Dashboard", "/parent/dashboard", "dashboard", ["Parent"]),
+  item("Continuation", "/parent/continuation", "rollover", ["Parent"]),
   item("Logout", "/logout", "logout", allPortalRoles),
 ];
 

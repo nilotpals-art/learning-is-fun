@@ -17,6 +17,7 @@ import {
   Megaphone,
   NotebookTabs,
   CalendarClock,
+  RefreshCw,
   School,
   Settings,
   Users,
@@ -47,6 +48,7 @@ const iconMap = {
   announcements: Megaphone,
   reports: FileChartColumn,
   settings: Settings,
+  rollover: RefreshCw,
   logout: LogOut,
 } satisfies Record<NavigationIconName, LucideIcon>;
 

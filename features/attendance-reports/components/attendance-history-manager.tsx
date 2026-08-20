@@ -20,7 +20,7 @@ import type { AttendanceHistoryFilters } from "@/features/attendance-reports/val
 import { ATTENDANCE_STATUSES, type AttendanceRosterEntry } from "@/features/attendance/types/attendance";
 
 const selectClassName = "h-10 w-full rounded-xl border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30";
-function asEditEntry(row: AttendanceHistoryRow): AttendanceRosterEntry { return { assignmentId: row.assignmentId, studentId: row.studentId, admissionNumber: row.admissionNumber, studentName: row.studentName, attendanceId: row.id, status: row.status, remarks: row.remarks, markedByName: row.markedByName, updatedAt: row.updatedAt }; }
+function asEditEntry(row: AttendanceHistoryRow): AttendanceRosterEntry { return { assignmentId: row.assignmentId, studentId: row.studentId, admissionNumber: row.admissionNumber, studentName: row.studentName, attendanceId: row.id, status: row.status, remarks: row.remarks, markedByName: row.markedByName, updatedAt: row.updatedAt, onBreak: false }; }
 function pageUrl(filters: AttendanceHistoryFilters, cursor: string, direction: "next" | "previous"): string { const params = new URLSearchParams(); Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && !["cursor", "direction"].includes(key)) params.set(key, String(value)); }); params.set("cursor", cursor); params.set("direction", direction); return `/attendance/history?${params}`; }
 
 export function AttendanceHistoryManager({ options, page, filters, error }: { options: AttendanceReportOptions; page: AttendanceHistoryPage; filters: AttendanceHistoryFilters; error: string | null }) {
