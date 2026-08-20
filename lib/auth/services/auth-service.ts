@@ -119,3 +119,11 @@ export async function requireRole(allowedRoles: readonly string[]): Promise<Auth
 
   redirect("/unauthorized");
 }
+
+export async function requireActionRole(allowedRoles: readonly string[]): Promise<AuthProfile> {
+  const profile = await requireAuth();
+  const normalized = normalizeApplicationRole(profile.role);
+  const allowed = allowedRoles.map(normalizeApplicationRole);
+  if (!normalized || !allowed.includes(normalized)) redirect("/unauthorized");
+  return profile;
+}
