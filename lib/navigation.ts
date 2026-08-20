@@ -101,6 +101,7 @@ export const navigation: readonly NavigationItem[] = [
     item("Question Papers", "/practice-work/papers", "homework"),
     item("Assignments", "/practice-work/assignments", "users"),
     item("Analytics", "/practice-work/analytics", "reports"),
+    item("PDF Settings", "/practice-work/papers/settings", "settings"),
   ]),
   group("Fees", "/fees", "fees", [
     item("Overview", "/fees", "dashboard"),
