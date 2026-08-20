@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { updateQuestionPaperAction } from "@/features/practice-work/actions/question-paper-actions";
@@ -37,7 +37,7 @@ export function QuestionPaperEditor({ paper }: { paper: PracticeSet }) {
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><Badge>{paper.status}</Badge><p className="mt-2 text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks</p></div>
-      <div className="flex flex-wrap gap-2"><Button variant="outline" asChild><a href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">Open PDF</a></Button><Button variant="outline" asChild><Link href="/practice-work/assignments">Assign</Link></Button><Button variant="outline" onClick={() => { const text = encodeURIComponent(`Learning Is Fun question paper: ${window.location.origin}/practice-work/papers/${paper.id}/pdf`); window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer"); }}>WhatsApp</Button></div>
+      <div className="flex flex-wrap gap-2"><a className={buttonVariants({ variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">Open PDF</a><Link className={buttonVariants({ variant: "outline" })} href="/practice-work/assignments">Assign</Link><Button variant="outline" onClick={() => { const text = encodeURIComponent(`Learning Is Fun question paper: ${window.location.origin}/practice-work/papers/${paper.id}/pdf`); window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer"); }}>WhatsApp</Button></div>
     </div>
 
     <Card><CardContent className="space-y-4 p-5">
