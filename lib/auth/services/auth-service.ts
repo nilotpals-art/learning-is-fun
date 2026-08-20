@@ -60,8 +60,12 @@ export function getRoleDestination(role: string | null): string {
 
 export async function findAuthorizedProfileByEmail(email: string): Promise<Pick<AuthProfile, "id" | "isActive"> | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("profiles").select("id, is_active").eq("email", normalizeEmail(email)).maybeSingle();
-  return error || !data ? null : { id: data.id as string, isActive: data.is_active === true };
+  const { data, error } = await supabase.rpc("pre_otp_profile_status", {
+    p_email: normalizeEmail(email),
+  });
+
+  if (error || data === "not_found" || (data !== "active" && data !== "inactive")) return null;
+  return { id: "pre-otp-authorized", isActive: data === "active" };
 }
 
 export async function getCurrentProfile(): Promise<AuthProfile | null> {
