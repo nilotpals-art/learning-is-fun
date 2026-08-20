@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { normalizeEmail, normalizeTrimmedText, normalizeUpperText } from "@/lib/validation/normalization";
-import { STAFF_PERMISSION_OPTIONS } from "@/lib/auth/permissions";
 
 const branch = z.union([z.string().uuid(), z.literal("")]).transform((value) => value || null);
 const baseUser = z.object({
@@ -14,6 +13,6 @@ const baseUser = z.object({
 export const createAdministratorSchema = baseUser;
 export const updateAdministratorSchema = createAdministratorSchema.omit({ email: true }).extend({ id: z.string().uuid() });
 
-const permissionCodes = z.array(z.enum(STAFF_PERMISSION_OPTIONS.map((item) => item.code) as [string, ...string[]])).max(STAFF_PERMISSION_OPTIONS.length);
-export const createStaffSchema = baseUser.extend({ role: z.enum(["Teacher", "Accountant"]), permissionCodes });
+const permissionCode = z.enum(["module.academic", "module.students", "module.attendance", "module.planner", "module.practice", "module.fees"]);
+export const createStaffSchema = baseUser.extend({ role: z.enum(["Teacher", "Accountant"]), permissionCodes: z.array(permissionCode).max(6) });
 export const updateStaffSchema = createStaffSchema.omit({ email: true }).extend({ id: z.string().uuid() });
