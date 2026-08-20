@@ -29,7 +29,7 @@ using (exists (select 1 from public.profiles p where (p.id = auth.uid() or p.use
 drop policy if exists question_paper_pdf_settings_write on public.question_paper_pdf_settings;
 create policy question_paper_pdf_settings_write on public.question_paper_pdf_settings
 for all to authenticated
-using (exists (select 1 from public.profiles p where (p.id = auth.uid() or p.user_id = auth.uid()) and p.institute_id = question_paper_pdf_settings.institute_id and p.is_active = true and lower(coalesce(p.role,'')) in ('administrator','super admin','super_admin','institute admin','institute_admin')))
-with check (exists (select 1 from public.profiles p where (p.id = auth.uid() or p.user_id = auth.uid()) and p.institute_id = question_paper_pdf_settings.institute_id and p.is_active = true and lower(coalesce(p.role,'')) in ('administrator','super admin','super_admin','institute admin','institute_admin')));
+using (exists (select 1 from public.profiles p where (p.id = auth.uid() or p.user_id = auth.uid()) and p.institute_id = question_paper_pdf_settings.institute_id and p.is_active = true and lower(coalesce(p.role,'')) in ('admin','administrator','super admin','super_admin','superadmin','institute admin','institute_admin')))
+with check (exists (select 1 from public.profiles p where (p.id = auth.uid() or p.user_id = auth.uid()) and p.institute_id = question_paper_pdf_settings.institute_id and p.is_active = true and lower(coalesce(p.role,'')) in ('admin','administrator','super admin','super_admin','superadmin','institute admin','institute_admin')));
 
 grant select, insert, update, delete on public.question_paper_pdf_settings to authenticated;
