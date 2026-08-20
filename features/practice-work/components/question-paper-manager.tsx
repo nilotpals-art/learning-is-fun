@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { combineQuestionPapersAction, createQuestionPaperAction } from "@/features/practice-work/actions/question-paper-actions";
@@ -28,8 +28,8 @@ export function QuestionPaperManager({ papers, questions, options }: { papers: P
 
   return <div className="space-y-6">
     <div className="grid gap-3 md:grid-cols-4">
-      <Button asChild><Link href="/practice-work/question-bank/generate">Generate with AI</Link></Button>
-      <Button variant="outline" asChild><Link href="/practice-work/question-bank">Import Questions</Link></Button>
+      <Link className={buttonVariants()} href="/practice-work/question-bank/generate">Generate with AI</Link>
+      <Link className={buttonVariants({ variant: "outline" })} href="/practice-work/question-bank">Import Questions</Link>
       <Button variant="outline" onClick={() => document.getElementById("manual-paper")?.scrollIntoView({ behavior: "smooth" })}>Create Manually</Button>
       <Button variant="outline" onClick={() => document.getElementById("combine-paper")?.scrollIntoView({ behavior: "smooth" })}>Combine Papers</Button>
     </div>
@@ -51,7 +51,7 @@ export function QuestionPaperManager({ papers, questions, options }: { papers: P
       <Button disabled={pending || selectedPapers.length < 2}>Combine Selected ({selectedPapers.length})</Button>
     </form></CardContent></Card>
 
-    <div className="space-y-3"><h2 className="text-lg font-semibold">Saved Question Papers</h2><div className="grid gap-4 lg:grid-cols-2">{papers.length ? papers.map((paper) => <Card key={paper.id}><CardContent className="space-y-3 p-5"><div className="flex justify-between gap-3"><p className="font-semibold">{paper.title}</p><Badge>{paper.status}</Badge></div><p className="text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks</p><div className="flex flex-wrap gap-2"><Button size="sm" asChild><Link href={`/practice-work/papers/${paper.id}`}>Edit / Preview</Link></Button><Button size="sm" variant="outline" asChild><a href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">PDF</a></Button><Button size="sm" variant="outline" asChild><Link href="/practice-work/assignments">Assign</Link></Button></div></CardContent></Card>) : <Card><CardContent className="p-8 text-center text-muted-foreground">No question papers yet.</CardContent></Card>}</div></div>
+    <div className="space-y-3"><h2 className="text-lg font-semibold">Saved Question Papers</h2><div className="grid gap-4 lg:grid-cols-2">{papers.length ? papers.map((paper) => <Card key={paper.id}><CardContent className="space-y-3 p-5"><div className="flex justify-between gap-3"><p className="font-semibold">{paper.title}</p><Badge>{paper.status}</Badge></div><p className="text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks</p><div className="flex flex-wrap gap-2"><Link className={buttonVariants({ size: "sm" })} href={`/practice-work/papers/${paper.id}`}>Edit / Preview</Link><a className={buttonVariants({ size: "sm", variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">PDF</a><Link className={buttonVariants({ size: "sm", variant: "outline" })} href="/practice-work/assignments">Assign</Link></div></CardContent></Card>) : <Card><CardContent className="p-8 text-center text-muted-foreground">No question papers yet.</CardContent></Card>}</div></div>
     {message && <p role="status" className="text-sm">{message}</p>}
   </div>;
 }
