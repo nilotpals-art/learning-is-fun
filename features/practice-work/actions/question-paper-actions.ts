@@ -7,6 +7,7 @@ import { combineQuestionPapers, createQuestionPaper, createQuestionPaperFromGene
 import type { PracticeActionResult } from "@/features/practice-work/types/practice-work";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 const createSchema = z.object({
   academicYearId: z.string().uuid(),
@@ -15,6 +16,7 @@ const createSchema = z.object({
   instructions: z.string().trim().max(2000).optional(),
 });
 const generationSchema = z.object({ generationId: z.string().uuid() });
+const deleteSchema = z.object({ paperId: z.string().uuid() });
 const combineSchema = z.object({
   sourcePaperIds: z.array(z.string().uuid()).min(2).max(3),
   paperType: z.string().trim().min(2).max(80),
@@ -32,7 +34,7 @@ const updateSchema = z.object({
 });
 
 function refresh() {
-  ["/practice-work", "/practice-work/papers", "/practice-work/sets", "/practice-work/assignments", "/practice-work/my-work"].forEach((path) => revalidatePath(path));
+  ["/practice-work", "/practice-work/papers", "/practice-work/sets", "/practice-work/assignments", "/practice-work/my-work", "/practice-work/attempts", "/practice-work/analytics"].forEach((path) => revalidatePath(path));
 }
 
 export async function createQuestionPaperAction(input: unknown): Promise<PracticeActionResult<{ id: string }>> {
@@ -87,5 +89,26 @@ export async function updateQuestionPaperAction(input: unknown): Promise<Practic
     return { status: "success", message: "Question paper saved." };
   } catch {
     return { status: "error", message: "Only draft papers can be edited." };
+  }
+}
+
+export async function deleteQuestionPaperAction(input: unknown): Promise<PracticeActionResult<{ assignments: number; attempts: number; answers: number }>> {
+  const parsed = deleteSchema.safeParse(input);
+  if (!parsed.success) return { status: "error", message: "Invalid question paper." };
+  try {
+    await requireRole(DASHBOARD_ROLES);
+    const s = await createClient();
+    const { data, error } = await s.rpc("delete_question_paper", { p_practice_set_id: parsed.data.paperId });
+    if (error) throw error;
+    const result = (data ?? {}) as { assignments?: number; attempts?: number; answers?: number };
+    refresh();
+    return {
+      status: "success",
+      message: "Question paper permanently deleted and removed from assigned student portals.",
+      data: { assignments: Number(result.assignments ?? 0), attempts: Number(result.attempts ?? 0), answers: Number(result.answers ?? 0) },
+    };
+  } catch (error) {
+    console.error("Question paper delete failed", error);
+    return { status: "error", message: "The question paper could not be deleted." };
   }
 }
