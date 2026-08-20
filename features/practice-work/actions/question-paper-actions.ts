@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { combineQuestionPapers, createQuestionPaper, updateDraftQuestionPaper } from "@/features/practice-work/services/question-paper-service";
+import { combineQuestionPapers, createQuestionPaper, createQuestionPaperFromGeneration, updateDraftQuestionPaper } from "@/features/practice-work/services/question-paper-service";
 import type { PracticeActionResult } from "@/features/practice-work/types/practice-work";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
@@ -14,12 +14,11 @@ const createSchema = z.object({
   paperType: z.string().trim().min(2).max(80),
   instructions: z.string().trim().max(2000).optional(),
 });
-
+const generationSchema = z.object({ generationId: z.string().uuid() });
 const combineSchema = z.object({
   sourcePaperIds: z.array(z.string().uuid()).min(2).max(3),
   paperType: z.string().trim().min(2).max(80),
 });
-
 const updateSchema = z.object({
   paperId: z.string().uuid(),
   title: z.string().trim().min(2).max(180),
@@ -46,6 +45,21 @@ export async function createQuestionPaperAction(input: unknown): Promise<Practic
     return { status: "success", message: "Draft question paper created.", data: { id } };
   } catch {
     return { status: "error", message: "The question paper could not be created." };
+  }
+}
+
+export async function createPaperFromGenerationAction(input: unknown): Promise<PracticeActionResult<{ id: string }>> {
+  const parsed = generationSchema.safeParse(input);
+  if (!parsed.success) return { status: "error", message: "Invalid generation." };
+  try {
+    const profile = await requireRole(DASHBOARD_ROLES);
+    const id = await createQuestionPaperFromGeneration(profile, parsed.data.generationId);
+    refresh();
+    return { status: "success", message: "Approved questions grouped into an editable question paper.", data: { id } };
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code.includes("PAPER_APPROVED_QUESTIONS_REQUIRED")) return { status: "error", message: "Approve the questions first, then create the paper." };
+    return { status: "error", message: "The question paper could not be created from this generation." };
   }
 }
 
