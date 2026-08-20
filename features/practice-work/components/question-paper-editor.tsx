@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { updateQuestionPaperAction } from "@/features/practice-work/actions/question-paper-actions";
+import { deleteQuestionPaperAction, updateQuestionPaperAction } from "@/features/practice-work/actions/question-paper-actions";
 import { publishPracticeSetAction } from "@/features/practice-work/actions/practice-work-actions";
 import type { PracticeSet } from "@/features/practice-work/types/practice-work";
 
@@ -35,6 +35,19 @@ export function QuestionPaperEditor({ paper, initialInstructions }: { paper: Pra
     if (publishResult.status === "success") router.refresh();
   });
 
+  const removePaper = () => {
+    const assigned = paper.assignmentCount ?? 0;
+    const warning = assigned > 0
+      ? `Permanently delete ${paper.title}?\n\nThis paper is assigned to ${assigned} student${assigned === 1 ? "" : "s"}. Their assignments, attempts and answers for this paper will also be permanently deleted. This cannot be undone.`
+      : `Permanently delete ${paper.title}? This cannot be undone.`;
+    if (!window.confirm(warning)) return;
+    startTransition(async () => {
+      const result = await deleteQuestionPaperAction({ paperId: paper.id });
+      setMessage(result.message);
+      if (result.status === "success") router.push("/practice-work/papers");
+    });
+  };
+
   const move = (index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= questions.length) return;
@@ -45,8 +58,8 @@ export function QuestionPaperEditor({ paper, initialInstructions }: { paper: Pra
 
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><Badge>{paper.status}</Badge><p className="mt-2 text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks</p></div>
-      <div className="flex flex-wrap gap-2"><a className={buttonVariants({ variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">Open PDF</a><Link className={buttonVariants({ variant: "outline" })} href="/practice-work/assignments">Assign</Link><Button variant="outline" onClick={() => { const text = encodeURIComponent(`Learning Is Fun question paper: ${window.location.origin}/practice-work/papers/${paper.id}/pdf`); window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer"); }}>WhatsApp</Button></div>
+      <div><Badge>{paper.status}</Badge><p className="mt-2 text-sm text-muted-foreground">{paper.questionCount} questions · {paper.totalMarks} marks{paper.assignmentCount ? ` · Assigned to ${paper.assignmentCount}` : ""}</p></div>
+      <div className="flex flex-wrap gap-2"><a className={buttonVariants({ variant: "outline" })} href={`/practice-work/papers/${paper.id}/pdf`} target="_blank" rel="noreferrer">Open PDF</a><Link className={buttonVariants({ variant: "outline" })} href="/practice-work/assignments">Assign</Link><Button variant="outline" onClick={() => { const text = encodeURIComponent(`Learning Is Fun question paper: ${window.location.origin}/practice-work/papers/${paper.id}/pdf`); window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer"); }}>WhatsApp</Button><Button variant="destructive" disabled={pending} onClick={removePaper}>Delete Paper</Button></div>
     </div>
 
     <Card><CardContent className="space-y-4 p-5">
