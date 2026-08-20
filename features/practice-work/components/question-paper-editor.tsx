@@ -12,11 +12,11 @@ import { updateQuestionPaperAction } from "@/features/practice-work/actions/ques
 import { publishPracticeSetAction } from "@/features/practice-work/actions/practice-work-actions";
 import type { PracticeSet } from "@/features/practice-work/types/practice-work";
 
-export function QuestionPaperEditor({ paper }: { paper: PracticeSet }) {
+export function QuestionPaperEditor({ paper, initialInstructions }: { paper: PracticeSet; initialInstructions: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [title, setTitle] = useState(paper.title);
-  const [instructions, setInstructions] = useState(paper.description ?? "ANSWER ALL QUESTIONS.");
+  const [instructions, setInstructions] = useState(initialInstructions);
   const [questions, setQuestions] = useState(paper.questions.map((q) => ({ id: q.id, questionText: q.questionText, marks: q.marks, displayOrder: q.displayOrder })));
   const [message, setMessage] = useState("");
   const editable = paper.status === "draft";
