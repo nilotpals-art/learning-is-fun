@@ -20,6 +20,7 @@ type QuestionRow = {
 
 type PaperRow = { id: string; academic_year_id: string; board_id: string | null; class_id: string | null };
 type SnapshotRow = { practice_set_id: string; question_bank_id: string | null; question_type: string; question_text: string; options: unknown; correct_answer: unknown; accepted_answers: unknown; answer_explanation: string | null; difficulty: string; marks: number | string; display_order: number };
+type GenerationRow = { id: string; source_type: "ai" | "import"; source_file_id: string | null };
 
 function institute(profile: AuthProfile) {
   if (!profile.instituteId) throw new Error("PRACTICE_UNAUTHORIZED");
@@ -60,6 +61,31 @@ export async function createQuestionPaper(profile: AuthProfile, input: { academi
   const { error: snapshotError } = await s.from("practice_set_questions").insert(ordered.map((q, index) => ({ institute_id: instituteId, practice_set_id: paper.id, question_bank_id: q.id, question_type: q.question_type, question_text: q.question_text, options: q.options, correct_answer: q.correct_answer, accepted_answers: q.accepted_answers, answer_explanation: q.answer_explanation, difficulty: q.difficulty, marks: Number(q.suggested_marks ?? 1), display_order: index + 1 })));
   if (snapshotError) throw snapshotError;
   return paper.id as string;
+}
+
+export async function createQuestionPaperFromGeneration(profile: AuthProfile, generationId: string) {
+  const s = await createClient();
+  const instituteId = institute(profile);
+  const [generationResult, yearResult] = await Promise.all([
+    s.from("ai_question_generations").select("id,source_type,source_file_id").eq("id", generationId).eq("institute_id", instituteId).maybeSingle(),
+    s.from("academic_years").select("id").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const generation = generationResult.data as unknown as GenerationRow | null;
+  if (generationResult.error || !generation || yearResult.error || !yearResult.data) throw new Error("PAPER_GENERATION_INVALID");
+
+  const questionResult = generation.source_type === "import"
+    ? generation.source_file_id
+      ? await s.from("question_bank").select("id").eq("institute_id", instituteId).eq("source_file_id", generation.source_file_id).eq("is_active", true).order("created_at")
+      : { data: null, error: new Error("PAPER_GENERATION_INVALID") }
+    : await s.from("question_bank").select("id").eq("institute_id", instituteId).eq("ai_generation_id", generation.id).eq("is_active", true).order("created_at");
+  if (questionResult.error || !questionResult.data?.length) throw new Error("PAPER_APPROVED_QUESTIONS_REQUIRED");
+
+  return createQuestionPaper(profile, {
+    academicYearId: yearResult.data.id as string,
+    questionIds: questionResult.data.map((row) => row.id as string),
+    paperType: generation.source_type === "import" ? "IMPORTED" : "PRACTICE",
+    instructions: "ANSWER ALL QUESTIONS.",
+  });
 }
 
 export async function combineQuestionPapers(profile: AuthProfile, input: { sourcePaperIds: string[]; paperType: string }) {
