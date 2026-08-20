@@ -97,7 +97,11 @@ export const navigation: readonly NavigationItem[] = [
     item("Notifications", "/learning-planner/notifications", "communication"),
     item("History", "/learning-planner/history", "reports"),
   ]),
-  item("Practice Work", "/practice-work", "homework"),
+  group("Practice Work", "/practice-work/papers", "homework", [
+    item("Question Papers", "/practice-work/papers", "homework"),
+    item("Assignments", "/practice-work/assignments", "users"),
+    item("Analytics", "/practice-work/analytics", "reports"),
+  ]),
   group("Fees", "/fees", "fees", [
     item("Overview", "/fees", "dashboard"),
     item("Fee Structures", "/fees/structures", "academics"),
@@ -112,7 +116,7 @@ export const navigation: readonly NavigationItem[] = [
     item("User Management", "/administration/users", "users", [ROLE.SUPER_ADMIN]),
   ]),
   item("Dashboard", "/student/dashboard", "dashboard", ["Student"]),
-  item("My Practice Work", "/practice-work/my-work", "homework", ["Student"]),
+  item("My Question Papers", "/practice-work/my-work", "homework", ["Student"]),
   item("My Schedule", "/student/schedule", "calendar", ["Student"]),
   item("My Attendance", "/student/attendance", "attendance", ["Student"]),
   item("My Results", "/student/results", "marks", ["Student"]),
