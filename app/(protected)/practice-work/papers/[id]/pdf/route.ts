@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
+import { PDFDocument, PDFFont, StandardFonts, degrees, rgb } from "pdf-lib";
 
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
@@ -8,7 +8,7 @@ const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 48;
 const WATERMARK = "LEARNING IS FUN";
 
-function wrap(text: string, font: Awaited<ReturnType<PDFDocument["embedFont"]>>, size: number, width: number) {
+function wrap(text: string, font: PDFFont, size: number, width: number) {
   const words = text.replace(/\s+/g, " ").trim().split(" ");
   const lines: string[] = [];
   let line = "";
@@ -79,7 +79,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   questions.forEach((q, index) => {
     const lines = wrap(`${index + 1}. ${q.question_text}`, regular, 10, A4[0] - MARGIN * 2 - 42);
-    const optionLines = Array.isArray(q.options) ? q.options.flatMap((option: string, optionIndex: number) => wrap(`${String.fromCharCode(65 + optionIndex)}. ${option}`, regular, 9, A4[0] - MARGIN * 2 - 25)) : [];
+    const options = Array.isArray(q.options) ? q.options.filter((option): option is string => typeof option === "string") : [];
+    const optionLines = options.flatMap((option, optionIndex) => wrap(`${String.fromCharCode(65 + optionIndex)}. ${option}`, regular, 9, A4[0] - MARGIN * 2 - 25));
     ensure((lines.length * 14) + (optionLines.length * 12) + 24);
     page.drawText(`[${Number(q.marks)}]`, { x: A4[0] - MARGIN - 30, y, size: 9, font: bold });
     for (const line of lines) { page.drawText(line, { x: MARGIN, y, size: 10, font: regular }); y -= 14; }
@@ -88,7 +89,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   const bytes = await pdf.save();
-  return new Response(bytes, {
+  return new Response(new Blob([bytes], { type: "application/pdf" }), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${fileName(paper.title)}"`,
