@@ -20,51 +20,70 @@ interface AssignmentRecord {
   created_at: string; student: RelatedStudent | RelatedStudent[];
   academic_year: RelatedName | RelatedName[]; school: RelatedName | RelatedName[];
   board: RelatedName | RelatedName[]; academic_class: RelatedClass | RelatedClass[];
-  batch: RelatedName | RelatedName[];
 }
 
 function one<T>(value: T | T[]): T { return Array.isArray(value) ? value[0] : value; }
 
-const SELECT = "id, student_id, academic_year_id, school_id, board_id, class_id, batch_id, effective_from, effective_to, status, promotion_type, remarks, created_at, student:students!student_assignments_student_fkey(name, admission_no), academic_year:academic_years!student_assignments_academic_year_fkey(name), school:schools!student_assignments_school_fkey(name), board:boards!student_assignments_board_fkey(name), academic_class:academic_classes!student_assignments_class_fkey(class_name), batch:batches!student_assignments_batch_compatibility_fkey(name)";
+const SELECT = "id, student_id, academic_year_id, school_id, board_id, class_id, batch_id, effective_from, effective_to, status, promotion_type, remarks, created_at, student:students!student_assignments_student_fkey(name, admission_no), academic_year:academic_years!student_assignments_academic_year_fkey(name), school:schools!student_assignments_school_fkey(name), board:boards!student_assignments_board_fkey(name), academic_class:academic_classes!student_assignments_class_fkey(class_name)";
 
-function toAssignment(row: AssignmentRecord): StudentAssignment {
+function toAssignment(row: AssignmentRecord, batchName: string): StudentAssignment {
   return { id: row.id, studentId: row.student_id, studentName: one(row.student).name,
     admissionNumber: one(row.student).admission_no, academicYearId: row.academic_year_id,
     academicYearName: one(row.academic_year).name, schoolId: row.school_id,
     schoolName: one(row.school).name, boardId: row.board_id, boardName: one(row.board).name,
     classId: row.class_id, className: one(row.academic_class).class_name,
-    batchId: row.batch_id, batchName: one(row.batch).name, effectiveFrom: row.effective_from,
+    batchId: row.batch_id, batchName, effectiveFrom: row.effective_from,
     effectiveTo: row.effective_to, status: row.status, promotionType: row.promotion_type,
     remarks: row.remarks, createdAt: row.created_at };
 }
 
 export async function listStudentAssignments(instituteId: string): Promise<StudentAssignment[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("student_assignments").select(SELECT)
+  const assignments = await supabase.from("student_assignments").select(SELECT)
     .eq("institute_id", instituteId).order("effective_from", { ascending: false });
-  if (error) throw error;
-  return (data as unknown as AssignmentRecord[]).map(toAssignment);
+  if (assignments.error) throw assignments.error;
+
+  const rows = (assignments.data ?? []) as unknown as AssignmentRecord[];
+  const batchIds = [...new Set(rows.map((row) => row.batch_id))];
+  const batchNames = new Map<string, string>();
+  if (batchIds.length > 0) {
+    const batches = await supabase.from("batches").select("id, name")
+      .eq("institute_id", instituteId).in("id", batchIds);
+    if (batches.error) throw batches.error;
+    for (const batch of batches.data ?? []) batchNames.set(batch.id as string, batch.name as string);
+  }
+
+  return rows.map((row) => toAssignment(row, batchNames.get(row.batch_id) ?? "Unknown Batch"));
 }
 
 export async function listAssignmentOptions(instituteId: string): Promise<AssignmentFormOptions> {
   const supabase = await createClient();
-  const [students, years, schools, boards, classes, batches] = await Promise.all([
+  const [students, years, schools, boards, classes, batches, batchBoards] = await Promise.all([
     supabase.from("students").select("id, name, admission_no").eq("institute_id", instituteId).order("name"),
     supabase.from("academic_years").select("id, name").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }),
     supabase.from("schools").select("id, name").eq("institute_id", instituteId).eq("is_active", true).order("name"),
     supabase.from("boards").select("id, name").eq("institute_id", instituteId).order("name"),
     supabase.from("academic_classes").select("id, class_name").eq("institute_id", instituteId).order("display_order", { nullsFirst: false }),
-    supabase.from("batches").select("id, name, board_id, class_id").eq("institute_id", instituteId).eq("is_active", true).not("board_id", "is", null).not("class_id", "is", null).order("name"),
+    supabase.from("batches").select("id, name, class_id").eq("institute_id", instituteId).eq("is_active", true).not("class_id", "is", null).order("name"),
+    supabase.from("batch_boards").select("batch_id, board_id, class_id").eq("institute_id", instituteId),
   ]);
-  const error = students.error ?? years.error ?? schools.error ?? boards.error ?? classes.error ?? batches.error;
+  const error = students.error ?? years.error ?? schools.error ?? boards.error ?? classes.error ?? batches.error ?? batchBoards.error;
   if (error) throw error;
+
+  const activeBatchMap = new Map((batches.data ?? []).map((batch) => [batch.id as string, { name: batch.name as string, classId: batch.class_id as string }]));
+  const compatibleBatches = (batchBoards.data ?? []).flatMap((link) => {
+    const batch = activeBatchMap.get(link.batch_id as string);
+    if (!batch || batch.classId !== link.class_id) return [];
+    return [{ id: link.batch_id as string, label: batch.name, boardId: link.board_id as string, classId: link.class_id as string }];
+  });
+
   return {
     students: (students.data ?? []).map((x) => ({ id: x.id, label: `${x.name} (${x.admission_no})` })),
     academicYears: (years.data ?? []).map((x) => ({ id: x.id, label: x.name })),
     schools: (schools.data ?? []).map((x) => ({ id: x.id, label: x.name })),
     boards: (boards.data ?? []).map((x) => ({ id: x.id, label: x.name })),
     classes: (classes.data ?? []).map((x) => ({ id: x.id, label: x.class_name })),
-    batches: (batches.data ?? []).map((x) => ({ id: x.id, label: x.name, boardId: x.board_id as string, classId: x.class_id as string })),
+    batches: compatibleBatches,
   };
 }
 
