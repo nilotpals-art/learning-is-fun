@@ -23,7 +23,7 @@ export function permissionForPath(pathname: string): PermissionCode | null {
   if (pathname.startsWith("/masters/academic-years") || pathname.startsWith("/masters/school-boards") || pathname.startsWith("/masters/classes") || pathname.startsWith("/masters/subjects") || pathname.startsWith("/masters/batches")) return PERMISSION.ACADEMIC;
   if (pathname.startsWith("/students")) return PERMISSION.STUDENTS;
   if (pathname.startsWith("/attendance")) return PERMISSION.ATTENDANCE;
-  if (pathname.startsWith("/learning-planner")) return PERMISSION.PLANNER;
+  if (pathname.startsWith("/learning-planner") || pathname.startsWith("/communication")) return PERMISSION.PLANNER;
   if (pathname.startsWith("/practice-work")) return PERMISSION.PRACTICE;
   if (pathname.startsWith("/fees") || pathname.startsWith("/masters/fee-heads") || pathname.startsWith("/masters/payment-modes")) return PERMISSION.FEES;
   return null;
