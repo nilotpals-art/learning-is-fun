@@ -1,29 +1,24 @@
 import { StudentFeePortal } from "@/features/fees/components/fees-manager";
-import { getStudentIdForProfile, listFeeDues, listFeePayments, listSecurityDeposits } from "@/features/fees/services/fee-service";
+import { getStudentIdForProfile, listFeeDues, listFeePayments } from "@/features/fees/services/fee-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
+
+function currentMonthEnd(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+}
 
 export default async function Page() {
   const profile = await requireRole(["Student"]);
   const studentId = await getStudentIdForProfile(profile);
-  const [dues, payments, deposits] = await Promise.all([
+  const [dues, payments] = await Promise.all([
     listFeeDues(profile, studentId),
     listFeePayments(profile, studentId),
-    listSecurityDeposits(profile),
   ]);
 
-  let securityDepositBalance = Math.max(
-    deposits.balances.find((entry) => entry.studentId === studentId)?.balance ?? 0,
-    0,
-  );
-
+  const monthEnd = currentMonthEnd();
   const monthlyDues = dues
-    .filter((due) => due.scheduleType === "monthly")
-    .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
-    .map((due) => {
-      const depositApplied = Math.min(due.outstanding, securityDepositBalance);
-      securityDepositBalance -= depositApplied;
-      return { ...due, outstanding: Math.max(due.outstanding - depositApplied, 0) };
-    });
+    .filter((due) => due.scheduleType === "monthly" && due.dueDate <= monthEnd)
+    .sort((left, right) => left.dueDate.localeCompare(right.dueDate));
 
   return <StudentFeePortal dues={monthlyDues} payments={payments} />;
 }
