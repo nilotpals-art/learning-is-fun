@@ -10,7 +10,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   const profile = await requireAuth();
   const destination = getRoleDestination(profile.role);
 
-  if (destination !== "/dashboard" && destination !== "/student/dashboard") redirect(destination);
+  if (destination !== "/dashboard" && destination !== "/student/dashboard" && destination !== "/parent/dashboard") redirect(destination);
 
   const instituteName = profile.instituteShortName ?? profile.instituteName ?? "Learning Is Fun";
   const permissions = isStaffRole(profile.role) ? await getCurrentPermissionCodes() : [];
