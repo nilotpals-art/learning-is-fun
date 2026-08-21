@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { CollectPayment } from "@/features/fees/components/fees-manager";
+import { AdminCollectPayment } from "@/features/fees/components/admin-collect-payment";
 import { getFeeReferenceData, getFeeSettings, listFeeDues } from "@/features/fees/services/fee-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
@@ -13,5 +13,5 @@ export default async function Page() {
     listFeeDues(profile),
     getFeeSettings(profile),
   ]);
-  return <CollectPayment students={references.students} years={references.academicYears} modes={references.paymentModes} dues={dues} settings={settings} />;
+  return <AdminCollectPayment students={references.students} years={references.academicYears} modes={references.paymentModes} dues={dues} settings={settings} />;
 }
