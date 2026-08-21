@@ -2,13 +2,13 @@ export interface BatchScheduleGroup { days: number[]; startTime: string; endTime
 export interface BatchSchedule { id: string; dayOfWeek: number; startTime: string; endTime: string; effectiveFrom: string; effectiveTo: string | null; isActive: boolean }
 export interface Batch {
   id:string; name:string; academicYearId:string|null; academicYearName:string|null; branchId:string|null; branchName:string|null;
-  boardId:string|null; boardName:string|null; classId:string|null; className:string|null; subjectId:string|null; subjectName:string|null;
+  boardId:string|null; boardName:string|null; boardIds:string[]; boardNames:string[]; classId:string|null; className:string|null; subjectId:string|null; subjectName:string|null;
   isActive:boolean; createdAt:string|null; schedules:BatchSchedule[];
 }
 export interface BatchOption { id:string; label:string }
 export interface BatchFormOptions { academicYears:BatchOption[]; branches:BatchOption[]; boards:BatchOption[]; classes:BatchOption[]; subjects:BatchOption[] }
 export interface BatchConflict { scheduleId:string; batchId:string; batchName:string; dayOfWeek:number; existingStartTime:string; existingEndTime:string; proposedStartTime:string; proposedEndTime:string }
-export type BatchFieldErrors=Partial<Record<"academicYearId"|"branchId"|"boardId"|"classId"|"subjectId"|"name"|"effectiveFrom"|"schedules",string[]>>;
+export type BatchFieldErrors=Partial<Record<"academicYearId"|"branchId"|"boardIds"|"classId"|"subjectId"|"name"|"effectiveFrom"|"schedules",string[]>>;
 export type BatchActionResult=
  | {status:"success";message:string;batchId?:string}
  | {status:"conflict";message:string;conflicts:BatchConflict[]}
