@@ -10,11 +10,12 @@ export function StudentPageShell({ title, description, children }: { title: stri
         <header className="overflow-hidden rounded-[2rem] border border-white/40 bg-gradient-to-br from-blue-700 via-indigo-700 to-violet-700 p-6 text-white shadow-2xl shadow-indigo-200/40 sm:p-8 dark:shadow-none">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.22em] text-cyan-100"><GraduationCap className="size-5" /> Learning Is Fun!!!</div>
-              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{title}</h1>
+              <div className="flex items-center gap-3 font-black tracking-tight text-white"><GraduationCap className="size-8 sm:size-10" /><span className="text-3xl sm:text-5xl">Learning Is Fun!!!</span></div>
+              <div className="mt-2 text-xs font-bold uppercase tracking-[0.24em] text-cyan-100 sm:text-sm">English Remedial Classes</div>
+              <h1 className="mt-5 text-2xl font-black tracking-tight sm:text-3xl">{title}</h1>
               <p className="mt-2 max-w-2xl text-blue-100">{description}</p>
             </div>
-            <div className="hidden items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur sm:flex"><BookOpen className="size-7 text-amber-300" /><div><p className="text-sm font-bold">Read · Learn · Grow</p><p className="text-xs text-blue-100">English Remedial Classes</p></div><Sparkles className="size-5 text-amber-300" /></div>
+            <div className="hidden items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur sm:flex"><BookOpen className="size-7 text-amber-300" /><div><p className="text-sm font-bold">Read · Learn · Grow</p><p className="text-xs text-blue-100">Build confidence every day</p></div><Sparkles className="size-5 text-amber-300" /></div>
           </div>
         </header>
         {children}
