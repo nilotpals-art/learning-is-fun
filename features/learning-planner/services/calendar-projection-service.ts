@@ -147,9 +147,15 @@ export async function listCalendarReadModel(
   toDate: string,
   batchWindows?: Map<string, Array<{ fromDate: string; toDate: string }>>,
 ): Promise<ScheduleEvent[]> {
+  // Student/parent calendars are already constrained to their own assignment
+  // batch windows. Do not additionally apply the profile branch filter here,
+  // because valid institute-wide schedules use branch_id = null and would be
+  // incorrectly hidden from an assigned student/parent.
+  const calendarProfile = batchWindows ? { ...profile, branchId: null } : profile;
+
   const [schedules, allPersistedEvents, holidayData, activeBatchIds] = await Promise.all([
-    listClassSchedules(profile),
-    listScheduleEvents(profile, { dateFrom: fromDate, dateTo: toDate }),
+    listClassSchedules(calendarProfile),
+    listScheduleEvents(calendarProfile, { dateFrom: fromDate, dateTo: toDate }),
     getHolidayCalendar(profile, fromDate, toDate).catch(() => ({
       holidays: [],
       providerAvailable: false,
