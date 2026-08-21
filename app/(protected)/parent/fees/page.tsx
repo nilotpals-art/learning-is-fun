@@ -1,4 +1,4 @@
-import { StudentFeePortal } from "@/features/fees/components/fees-manager";
+import { ParentFeesLite } from "@/features/parent/components/parent-fees-lite";
 import { getFeeSettings, getParentStudentIds, listFeeDues, listFeePayments } from "@/features/fees/services/fee-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
 
@@ -9,5 +9,5 @@ export default async function Page() {
   const [dues, payments, settings] = studentIds.length
     ? await Promise.all([listFeeDues(profile, studentIds), listFeePayments(profile, studentIds), settingsPromise])
     : [[], [], await settingsPromise];
-  return <StudentFeePortal dues={dues} payments={payments} settings={settings} isParent />;
+  return <ParentFeesLite dues={dues} payments={payments} settings={settings} />;
 }
