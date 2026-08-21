@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import {
   findAuthorizedProfileByEmail,
@@ -197,4 +198,10 @@ export async function verifyOtp(input: unknown): Promise<AuthActionResult> {
 export async function logout(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
+}
+
+export async function logoutAndRedirect(): Promise<never> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }
