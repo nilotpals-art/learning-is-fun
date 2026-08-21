@@ -80,7 +80,19 @@ export async function getCurrentProfile(): Promise<AuthProfile | null> {
     .from("profiles")
     .select("id, user_id, email, name, role, is_active, institute_id, branch_id, role_record:roles(name), institute_record:institutes(name, short_name, logo_url)")
     .or(`id.eq.${user.id},user_id.eq.${user.id}`).limit(1).maybeSingle();
-  return error || !data ? null : toAuthProfile(data as ProfileRecord);
+  if (error || !data) return null;
+
+  const profile = toAuthProfile(data as ProfileRecord);
+  if (!profile.isActive) return profile;
+
+  if ((profile.role === ROLE.STUDENT || profile.role === ROLE.PARENT) && profile.email) {
+    const { data: status, error: statusError } = await supabase.rpc("pre_otp_profile_status", {
+      p_email: normalizeEmail(profile.email),
+    });
+    if (statusError || status !== "active") return { ...profile, isActive: false };
+  }
+
+  return profile;
 }
 
 export async function getCurrentPermissionCodes(): Promise<PermissionCode[]> {
