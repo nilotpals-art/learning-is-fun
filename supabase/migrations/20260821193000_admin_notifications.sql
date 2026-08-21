@@ -75,10 +75,13 @@ declare
   v_student_count integer := 0;
   v_portal_count integer := 0;
   v_whatsapp_count integer := 0;
+  v_increment integer := 0;
 begin
-  select p.*, coalesce(nullif(btrim(p.role),''),r.name) into v_profile, v_role
-  from public.profiles p left join public.roles r on r.id=p.role_id
-  where p.id=auth.uid() and p.is_active is true;
+  select p.* into v_profile from public.profiles p where p.id=auth.uid() and p.is_active is true;
+  if v_profile.id is not null then
+    select coalesce(nullif(btrim(v_profile.role),''),r.name) into v_role from public.roles r where r.id=v_profile.role_id;
+    if v_role is null then v_role := nullif(btrim(v_profile.role),''); end if;
+  end if;
   if v_profile.id is null or v_profile.institute_id is null or v_role not in ('admin','Super Admin','Institute Admin') then raise exception 'ADMIN_NOTIFICATION_UNAUTHORIZED'; end if;
   if p_audience not in ('students','parents','both') then raise exception 'ADMIN_NOTIFICATION_AUDIENCE_INVALID'; end if;
   if p_priority not in ('normal','important','urgent') then raise exception 'ADMIN_NOTIFICATION_PRIORITY_INVALID'; end if;
@@ -122,8 +125,8 @@ begin
     from pg_temp.admin_notification_students t join public.student_parent_links spl on spl.student_id=t.student_id and spl.institute_id=v_profile.institute_id join public.parents pa on pa.id=spl.parent_id and pa.institute_id=spl.institute_id
     where pa.is_active is true and pa.profile_id is not null
     on conflict(notification_id,user_id,delivery_channel) do nothing;
-    get diagnostics v_student_count = row_count;
-    v_portal_count := v_portal_count + v_student_count;
+    get diagnostics v_increment = row_count;
+    v_portal_count := v_portal_count + v_increment;
   end if;
 
   if p_whatsapp_enabled and p_audience in ('students','both') then
@@ -137,12 +140,12 @@ begin
     select distinct v_profile.institute_id,v_campaign_id,v_notification_id,pa.profile_id,'Parent',t.student_id,pa.id,btrim(pa.mobile),btrim(p_message)
     from pg_temp.admin_notification_students t join public.student_parent_links spl on spl.student_id=t.student_id and spl.institute_id=v_profile.institute_id join public.parents pa on pa.id=spl.parent_id and pa.institute_id=spl.institute_id
     where pa.is_active is true and nullif(btrim(pa.mobile),'') is not null;
-    get diagnostics v_student_count = row_count;
-    v_whatsapp_count := v_whatsapp_count + v_student_count;
+    get diagnostics v_increment = row_count;
+    v_whatsapp_count := v_whatsapp_count + v_increment;
   end if;
 
   update public.admin_notification_campaigns set portal_recipient_count=v_portal_count, whatsapp_recipient_count=v_whatsapp_count where id=v_campaign_id;
-  return jsonb_build_object('campaign_id',v_campaign_id,'notification_id',v_notification_id,'student_count',(select count(*) from pg_temp.admin_notification_students),'portal_recipient_count',v_portal_count,'whatsapp_recipient_count',v_whatsapp_count);
+  return jsonb_build_object('campaign_id',v_campaign_id,'notification_id',v_notification_id,'student_count',v_student_count,'portal_recipient_count',v_portal_count,'whatsapp_recipient_count',v_whatsapp_count);
 end;$function$;
 
 revoke all on function public.send_admin_notification_campaign(text,text,text,text,text,uuid[],uuid[],boolean,boolean) from public;
