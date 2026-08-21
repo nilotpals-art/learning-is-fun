@@ -8,6 +8,12 @@ on:
     paths:
       - "android-wrapper/**"
       - ".github/workflows/build-android-apk.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "android-wrapper/**"
+      - ".github/workflows/build-android-apk.yml"
 
 jobs:
   build-apk:
