@@ -11,8 +11,14 @@ export default async function StudentDashboardPage() {
       <div className="pointer-events-none absolute left-8 top-8 hidden rotate-[-10deg] rounded-3xl border border-blue-200/50 bg-white/45 p-5 text-blue-700 shadow-lg backdrop-blur lg:block dark:bg-white/5 dark:text-blue-200"><BookOpen className="size-10" /></div>
       <div className="pointer-events-none absolute right-10 top-14 hidden rotate-[12deg] rounded-full border border-amber-200/60 bg-white/45 p-5 text-amber-500 shadow-lg backdrop-blur lg:block dark:bg-white/5"><Sparkles className="size-9" /></div>
       <div className="relative mx-auto max-w-[1500px] space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/65 px-5 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
-          <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white"><GraduationCap className="size-6" /></span><div><p className="text-lg font-black tracking-tight text-slate-900 dark:text-white">Learning Is Fun!!!</p><p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-200">English Remedial Classes</p></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.75rem] border border-white/60 bg-white/70 px-5 py-5 shadow-lg backdrop-blur sm:px-7 dark:border-white/10 dark:bg-white/5">
+          <div className="flex items-center gap-4">
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-md"><GraduationCap className="size-8" /></span>
+            <div>
+              <p className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl dark:text-white">Learning Is Fun!!!</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-blue-700 sm:text-sm dark:text-blue-200">English Remedial Classes</p>
+            </div>
+          </div>
           <p className="hidden text-sm font-semibold text-slate-500 sm:block dark:text-slate-300">Learn something new every day ✨</p>
         </div>
         <StudentDashboard data={data} />
