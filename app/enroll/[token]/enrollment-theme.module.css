@@ -1,0 +1,66 @@
+.theme > :global(div) {
+  background:
+    radial-gradient(circle at top left, rgba(194, 65, 12, 0.11), transparent 30%),
+    radial-gradient(circle at top right, rgba(13, 148, 136, 0.10), transparent 30%),
+    linear-gradient(to bottom, #fffaf3, #f8f3e8 58%, #fffdf8) !important;
+}
+
+.theme :global(header) {
+  background: linear-gradient(135deg, #9a3412 0%, #b45309 46%, #0f766e 100%) !important;
+}
+
+.theme :global(header h1::after) {
+  content: "251/1 Nagerdra Nath Road, Satgachi, Kol - 28";
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.theme :global(header p) {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.theme :global(.from-indigo-50) { --tw-gradient-from: #fff7ed !important; }
+.theme :global(.to-sky-50) { --tw-gradient-to: #fef3c7 !important; }
+.theme :global(.from-emerald-50) { --tw-gradient-from: #f0fdfa !important; }
+.theme :global(.to-teal-50) { --tw-gradient-to: #ecfdf5 !important; }
+.theme :global(.from-violet-50) { --tw-gradient-from: #fdf2f8 !important; }
+.theme :global(.to-fuchsia-50) { --tw-gradient-to: #fff1f2 !important; }
+.theme :global(.from-sky-50) { --tw-gradient-from: #ecfeff !important; }
+.theme :global(.to-indigo-50) { --tw-gradient-to: #f0fdfa !important; }
+.theme :global(.from-amber-50) { --tw-gradient-from: #fffbeb !important; }
+.theme :global(.to-orange-50) { --tw-gradient-to: #fff7ed !important; }
+
+.theme :global(.bg-indigo-50) { background-color: #fff7ed !important; }
+.theme :global(.text-indigo-700),
+.theme :global(.text-indigo-800) { color: #9a3412 !important; }
+.theme :global(.ring-indigo-100),
+.theme :global(.border-indigo-100) {
+  --tw-ring-color: #fed7aa !important;
+  border-color: #fed7aa !important;
+}
+
+.theme :global(.bg-sky-50) { background-color: #ecfeff !important; }
+.theme :global(.text-sky-700),
+.theme :global(.text-sky-800) { color: #0e7490 !important; }
+
+.theme :global(.bg-emerald-50) { background-color: #f0fdfa !important; }
+.theme :global(.text-emerald-700),
+.theme :global(.text-emerald-800) { color: #0f766e !important; }
+
+.theme :global(.bg-indigo-600) { background-color: #0f766e !important; }
+.theme :global(.hover\:bg-indigo-700:hover) { background-color: #115e59 !important; }
+.theme :global(.focus-visible\:border-indigo-400:focus-visible) { border-color: #0d9488 !important; }
+.theme :global(.focus-visible\:ring-indigo-100:focus-visible) { --tw-ring-color: #ccfbf1 !important; }
+
+.theme :global(input[type="checkbox"]) { accent-color: #0f766e; }
+
+.theme :global(.bg-gradient-to-r.from-indigo-500.via-violet-500.to-sky-500) {
+  background-image: linear-gradient(90deg, #c2410c, #d97706, #0f766e) !important;
+}
+
+.theme :global(.bg-slate-950) { background-color: #16302b !important; }
