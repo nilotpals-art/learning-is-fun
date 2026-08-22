@@ -84,10 +84,6 @@ DECLARE
   v_student_id uuid;
   v_admission_no text;
 BEGIN
-  IF current_user <> 'service_role' THEN
-    RAISE EXCEPTION 'PARENT_ENROLLMENT_SERVICE_ROLE_REQUIRED';
-  END IF;
-
   SELECT * INTO v_invite
   FROM public.student_enrollment_invites
   WHERE token_hash = p_token_hash
