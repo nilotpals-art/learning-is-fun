@@ -18,6 +18,7 @@ const normalizedEmail = z
   .trim()
   .email("Enter a valid email address.")
   .transform(normalizeEmail);
+const optionalNormalizedEmail = z.union([normalizedEmail, z.literal("")]);
 const mobile = (label: string) => requiredText(label).regex(/^[6-9][0-9]{9}$/, `${label} must be a valid 10-digit mobile number.`);
 const dateText = requiredText("Date").refine(
   (value) => !Number.isNaN(Date.parse(`${value}T00:00:00`)),
@@ -58,15 +59,18 @@ export const studentEditSchema = z.object({
   ),
   gender: z.enum(STUDENT_GENDERS),
   mobile: mobile("Student Mobile"),
-  email: normalizedEmail,
+  email: optionalNormalizedEmail,
   address: optionalUpperText,
   parentName: requiredUpperText("Father / Guardian Name"),
   relationship: z.enum(PARENT_RELATIONSHIPS),
   parentMobile: mobile("Parent Mobile"),
-  parentEmail: normalizedEmail,
+  parentEmail: optionalNormalizedEmail,
   admissionDate: dateText,
   status: z.enum(STUDENT_STATUSES),
   comments: optionalUpperText,
+}).refine((value) => Boolean(value.email || value.parentEmail), {
+  path: ["parentEmail"],
+  message: "At least Student Email or Parent Email is required.",
 });
 
 export const studentIdSchema = z.string().uuid();
