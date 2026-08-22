@@ -23,12 +23,11 @@ function refreshPlanner() {
 
 function messageFor(error: unknown): string {
   const message = error && typeof error === "object" && "message" in error ? String(error.message) : "";
-  if (message.includes("PLANNER_EVENT_PAST")) return "Past events cannot be deleted from the Calendar.";
-  if (message.includes("PLANNER_EVENT_HAS_DEPENDENCIES")) return "This event is linked to Exam Results, Practice Work, or another protected record and cannot be deleted.";
+  if (message.includes("PLANNER_EVENT_PAST")) return "Past events cannot be deleted from the Calendar. Delete them from History instead.";
+  if (message.includes("PLANNER_EVENT_HAS_EXAM_RESULTS")) return "This event has an Exam Result Set. Remove the exam result first, then delete the event.";
   if (message.includes("PLANNER_EVENT_NOT_FOUND")) return "The Schedule Event was not found.";
-  if (message.includes("PLANNER_HISTORY_NOT_FOUND")) return "The history entry was not found.";
   if (message.includes("PLANNER_DELETE_UNAUTHORIZED")) return "You are not authorised to delete Planner records.";
-  return "The Planner record could not be deleted.";
+  return "The Schedule Event could not be deleted.";
 }
 
 export async function deleteForthcomingPlannerEventAction(eventId: string): Promise<PlannerDeleteResult> {
@@ -42,17 +41,23 @@ export async function deleteForthcomingPlannerEventAction(eventId: string): Prom
   return {
     status: "success",
     message: result?.restoredRecurringClass
-      ? "Event deleted. The normal recurring class schedule has been restored."
-      : "Forthcoming event deleted.",
+      ? "Event deleted everywhere. The normal recurring class has been restored."
+      : "Event deleted everywhere.",
   };
 }
 
-export async function deletePlannerHistoryEntryAction(changeId: string): Promise<PlannerDeleteResult> {
+export async function deletePlannerEventFromHistoryAction(eventId: string): Promise<PlannerDeleteResult> {
   await requireRole(DASHBOARD_ROLES);
-  if (!/^[0-9a-f-]{36}$/i.test(changeId)) return { status: "error", message: "Invalid history entry." };
+  if (!/^[0-9a-f-]{36}$/i.test(eventId)) return { status: "error", message: "Invalid Schedule Event." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("delete_planner_history_entry", { p_change_id: changeId });
+  const { data, error } = await supabase.rpc("delete_planner_event_from_history", { p_event_id: eventId });
   if (error) return { status: "error", message: messageFor(error) };
-  revalidatePath("/learning-planner/history");
-  return { status: "success", message: "History entry deleted." };
+  refreshPlanner();
+  const result = data as { restoredRecurringClass?: boolean } | null;
+  return {
+    status: "success",
+    message: result?.restoredRecurringClass
+      ? "Event deleted everywhere. The normal recurring class has been restored."
+      : "Event deleted everywhere.",
+  };
 }
