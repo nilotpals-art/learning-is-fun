@@ -4,10 +4,10 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { provisionParentIdentity, provisionStudentIdentity } from "@/features/auth/services/user-provisioning-service";
 import { findFeeStructure } from "@/features/fees/services/fee-structure-service";
 import {
   createEnrollmentInvite,
+  provisionEnrollmentPortalIdentities,
   requestEnrollmentOtp,
   submitEnrollment,
   verifyEnrollmentOtp,
@@ -19,6 +19,7 @@ import { DASHBOARD_ROLES } from "@/lib/navigation";
 const mobileSchema = z.string().trim().regex(/^[6-9][0-9]{9}$/, "Enter a valid 10-digit Indian mobile number.");
 const emailSchema = z.string().trim().email().transform((value) => value.toLowerCase());
 const purposeSchema = z.enum(["STUDENT", "PARENT"]);
+const optionalEmailSchema = z.union([emailSchema, z.literal("")]).transform((value) => value || null);
 
 export async function createEnrollmentLinkAction(input: unknown) {
   const parsed = z.object({
@@ -80,31 +81,47 @@ export async function verifyEnrollmentOtpAction(token: string, purposeInput: unk
 }
 
 export async function submitEnrollmentAction(token: string, input: unknown) {
-  const parsed = z.object({
+  const schema = z.object({
     name: z.string().trim().min(1),
     motherName: z.string().trim().optional().default(""),
     gender: z.enum(["Male", "Female", "Other"]),
     dateOfBirth: z.string().refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00`)) && new Date(`${value}T00:00:00`) <= new Date(), "Enter a valid Date of Birth."),
     studentMobile: mobileSchema,
-    studentEmail: emailSchema,
+    studentEmail: optionalEmailSchema,
+    studentNoEmail: z.boolean(),
     address: z.string().trim().optional().default(""),
     parentName: z.string().trim().min(1),
     relationship: z.enum(["Father", "Mother", "Guardian"]),
-    parentEmail: emailSchema,
+    parentEmail: optionalEmailSchema,
+    parentNoEmail: z.boolean(),
     rulesAccepted: z.literal(true),
-  }).safeParse(input);
+  }).superRefine((value, ctx) => {
+    if (value.studentNoEmail && value.studentEmail) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["studentEmail"], message: "Clear Student Email when No email is selected." });
+    if (!value.studentNoEmail && !value.studentEmail) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["studentEmail"], message: "Enter Student Email or select No email." });
+    if (value.parentNoEmail && value.parentEmail) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["parentEmail"], message: "Clear Parent Email when No email is selected." });
+    if (!value.parentNoEmail && !value.parentEmail) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["parentEmail"], message: "Enter Parent Email or select No email." });
+    if (value.studentNoEmail && value.parentNoEmail) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["parentEmail"], message: "At least Student Email or Parent Email is required." });
+    if (value.studentEmail && value.parentEmail && value.studentEmail === value.parentEmail) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["parentEmail"], message: "Student and Parent Email must be different." });
+  });
+
+  const parsed = schema.safeParse(input);
   if (!parsed.success) return { status: "error" as const, message: parsed.error.issues[0]?.message ?? "Please complete all required fields." };
 
   try {
     const result = await submitEnrollment(token, parsed.data);
     try {
-      const studentIdentity = await provisionStudentIdentity({ studentId: result.student_id, email: parsed.data.studentEmail });
-      const parentIdentity = await provisionParentIdentity({ parentId: result.parent_id, email: parsed.data.parentEmail, studentId: result.student_id, relationship: parsed.data.relationship });
-      if ((studentIdentity.status !== "created" && studentIdentity.status !== "reused") || (parentIdentity.status !== "created" && parentIdentity.status !== "reused")) {
-        console.error("Parent enrollment identity provisioning requires review", { studentId: result.student_id, parentId: result.parent_id });
-      }
+      await provisionEnrollmentPortalIdentities({
+        studentId: result.student_id,
+        parentId: result.parent_id,
+        studentEmail: parsed.data.studentEmail,
+        parentEmail: parsed.data.parentEmail,
+      });
     } catch (identityError) {
-      console.error("Parent enrollment identity provisioning failed", { studentId: result.student_id, error: identityError instanceof Error ? identityError.name : "unknown" });
+      console.error("Parent enrollment portal provisioning failed", {
+        studentId: result.student_id,
+        parentId: result.parent_id,
+        error: identityError instanceof Error ? identityError.message : "unknown",
+      });
     }
     revalidatePath("/students");
     revalidatePath("/students/enrollment-links");
@@ -112,8 +129,10 @@ export async function submitEnrollmentAction(token: string, input: unknown) {
     return { status: "success" as const, admissionNumber: result.admission_no, enrollmentDate: result.enrollment_date };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Enrollment could not be submitted.";
-    if (message.includes("PARENT_ENROLLMENT_PARENT_CONFLICT")) return { status: "error" as const, message: "This parent email already exists with different parent details. Please contact Learning Is Fun." };
-    if (message.includes("PARENT_ENROLLMENT_STUDENT_EMAIL_UNVERIFIED") || message.includes("PARENT_ENROLLMENT_PARENT_EMAIL_UNVERIFIED")) return { status: "error" as const, message: "Both email addresses must be OTP verified before submission." };
+    if (message.includes("PARENT_ENROLLMENT_PARENT_CONFLICT")) return { status: "error" as const, message: "These parent details conflict with an existing Parent record. Please contact Learning Is Fun." };
+    if (message.includes("PARENT_ENROLLMENT_EMAIL_REQUIRED")) return { status: "error" as const, message: "At least Student Email or Parent Email is required." };
+    if (message.includes("PARENT_ENROLLMENT_EMAILS_MUST_DIFFER")) return { status: "error" as const, message: "Student and Parent Email must be different." };
+    if (message.includes("PARENT_ENROLLMENT_STUDENT_EMAIL_UNVERIFIED") || message.includes("PARENT_ENROLLMENT_PARENT_EMAIL_UNVERIFIED")) return { status: "error" as const, message: "Every email provided must be OTP verified before submission." };
     if (message.includes("PARENT_ENROLLMENT_EXPIRED") || message.includes("PARENT_ENROLLMENT_INVALID")) return { status: "error" as const, message: "This enrollment link is no longer active." };
     if (message.includes("PARENT_ENROLLMENT_STUDENT_EMAIL_EXISTS")) return { status: "error" as const, message: "A student account already uses this email address." };
     return { status: "error" as const, message: "Enrollment could not be submitted. Please contact Learning Is Fun." };
