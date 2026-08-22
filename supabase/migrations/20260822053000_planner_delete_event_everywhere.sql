@@ -11,6 +11,10 @@ declare
   v_root_id uuid;
   v_ids uuid[];
   v_notification_ids uuid[];
+  v_exam_set_ids uuid[];
+  v_practice_set_ids uuid[];
+  v_assignment_ids uuid[];
+  v_attempt_ids uuid[];
 begin
   select p.* into v_profile from public.profiles p where p.id=auth.uid() and p.is_active is true;
   if v_profile.id is null or v_profile.institute_id is null then raise exception 'PLANNER_DELETE_UNAUTHORIZED'; end if;
@@ -27,30 +31,85 @@ begin
   from public.schedule_events
   where institute_id=v_profile.institute_id and (id=v_root_id or original_event_id=v_root_id);
 
-  if exists(select 1 from public.exam_result_sets where schedule_event_id=any(v_ids)) then
-    raise exception 'PLANNER_EVENT_HAS_EXAM_RESULTS';
+  -- Delete exam-result records attached to this event group.
+  select array_agg(id) into v_exam_set_ids
+  from public.exam_result_sets
+  where institute_id=v_profile.institute_id and schedule_event_id=any(v_ids);
+
+  if coalesce(cardinality(v_exam_set_ids),0)>0 then
+    update public.exam_result_sets
+       set supersedes_result_set_id=null
+     where institute_id=v_profile.institute_id
+       and supersedes_result_set_id=any(v_exam_set_ids)
+       and not(id=any(v_exam_set_ids));
+    delete from public.exam_student_results
+     where institute_id=v_profile.institute_id and exam_result_set_id=any(v_exam_set_ids);
+    delete from public.exam_result_sets
+     where institute_id=v_profile.institute_id and id=any(v_exam_set_ids);
   end if;
 
-  update public.practice_assignments set schedule_event_id=null where schedule_event_id=any(v_ids);
-  update public.practice_sets set schedule_event_id=null where schedule_event_id=any(v_ids);
+  -- Delete Practice Work records attached directly to the event or to an event-linked set.
+  select array_agg(id) into v_practice_set_ids
+  from public.practice_sets
+  where institute_id=v_profile.institute_id and schedule_event_id=any(v_ids);
 
+  select array_agg(id) into v_assignment_ids
+  from public.practice_assignments
+  where institute_id=v_profile.institute_id
+    and (schedule_event_id=any(v_ids)
+      or (coalesce(cardinality(v_practice_set_ids),0)>0 and practice_set_id=any(v_practice_set_ids)));
+
+  if coalesce(cardinality(v_assignment_ids),0)>0 then
+    select array_agg(id) into v_attempt_ids
+    from public.practice_attempts
+    where institute_id=v_profile.institute_id and practice_assignment_id=any(v_assignment_ids);
+
+    if coalesce(cardinality(v_attempt_ids),0)>0 then
+      update public.practice_attempts
+         set parent_attempt_id=null
+       where institute_id=v_profile.institute_id
+         and parent_attempt_id=any(v_attempt_ids)
+         and not(id=any(v_attempt_ids));
+      delete from public.practice_attempts
+       where institute_id=v_profile.institute_id and id=any(v_attempt_ids);
+    end if;
+
+    delete from public.practice_assignments
+     where institute_id=v_profile.institute_id and id=any(v_assignment_ids);
+  end if;
+
+  if coalesce(cardinality(v_practice_set_ids),0)>0 then
+    delete from public.practice_sets
+     where institute_id=v_profile.institute_id and id=any(v_practice_set_ids);
+  end if;
+
+  -- Break harmless links from other events before deleting this event group.
   update public.schedule_events set related_event_id=null
   where institute_id=v_profile.institute_id and related_event_id=any(v_ids) and not(id=any(v_ids));
 
+  -- Remove all notifications and delivery records generated for the event.
   select array_agg(id) into v_notification_ids
-  from public.notifications where institute_id=v_profile.institute_id and schedule_event_id=any(v_ids);
+  from public.notifications
+  where institute_id=v_profile.institute_id and schedule_event_id=any(v_ids);
 
   if coalesce(cardinality(v_notification_ids),0)>0 then
-    delete from public.admin_notification_whatsapp_outbox where institute_id=v_profile.institute_id and notification_id=any(v_notification_ids);
-    delete from public.admin_notification_campaigns where institute_id=v_profile.institute_id and notification_id=any(v_notification_ids);
-    delete from public.notification_recipients where institute_id=v_profile.institute_id and notification_id=any(v_notification_ids);
-    delete from public.notifications where institute_id=v_profile.institute_id and id=any(v_notification_ids);
+    delete from public.admin_notification_whatsapp_outbox
+     where institute_id=v_profile.institute_id and notification_id=any(v_notification_ids);
+    delete from public.admin_notification_campaigns
+     where institute_id=v_profile.institute_id and notification_id=any(v_notification_ids);
+    delete from public.notification_recipients
+     where institute_id=v_profile.institute_id and notification_id=any(v_notification_ids);
+    delete from public.notifications
+     where institute_id=v_profile.institute_id and id=any(v_notification_ids);
   end if;
 
-  delete from public.planner_message_outbox where institute_id=v_profile.institute_id and schedule_event_id=any(v_ids);
-  delete from public.planner_event_overlap_approvals where event_id=any(v_ids) or source_event_id=any(v_ids) or conflicting_event_id=any(v_ids);
+  delete from public.planner_message_outbox
+   where institute_id=v_profile.institute_id and schedule_event_id=any(v_ids);
+  delete from public.planner_event_overlap_approvals
+   where event_id=any(v_ids) or source_event_id=any(v_ids) or conflicting_event_id=any(v_ids);
   delete from public.schedule_changes where schedule_event_id=any(v_ids);
-  delete from public.schedule_events where institute_id=v_profile.institute_id and id=any(v_ids);
+  delete from public.schedule_events
+   where institute_id=v_profile.institute_id and id=any(v_ids);
 
   return jsonb_build_object(
     'deleted',coalesce(cardinality(v_ids),0),
