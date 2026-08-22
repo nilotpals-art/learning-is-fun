@@ -1,0 +1,111 @@
+.parent-enrollment-theme > div {
+  background:
+    radial-gradient(circle at top left, rgba(194, 65, 12, 0.11), transparent 30%),
+    radial-gradient(circle at top right, rgba(13, 148, 136, 0.10), transparent 30%),
+    linear-gradient(to bottom, #fffaf3, #f8f3e8 58%, #fffdf8) !important;
+}
+
+.parent-enrollment-theme header {
+  background: linear-gradient(135deg, #9a3412 0%, #b45309 46%, #0f766e 100%) !important;
+}
+
+.parent-enrollment-theme header h1::after {
+  content: "251/1 Nagerdra Nath Road, Satgachi, Kol - 28";
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.parent-enrollment-theme header p {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.parent-enrollment-theme .from-indigo-50 {
+  --tw-gradient-from: #fff7ed !important;
+}
+.parent-enrollment-theme .to-sky-50 {
+  --tw-gradient-to: #fef3c7 !important;
+}
+.parent-enrollment-theme .from-emerald-50 {
+  --tw-gradient-from: #f0fdfa !important;
+}
+.parent-enrollment-theme .to-teal-50 {
+  --tw-gradient-to: #ecfdf5 !important;
+}
+.parent-enrollment-theme .from-violet-50 {
+  --tw-gradient-from: #fdf2f8 !important;
+}
+.parent-enrollment-theme .to-fuchsia-50 {
+  --tw-gradient-to: #fff1f2 !important;
+}
+.parent-enrollment-theme .from-sky-50 {
+  --tw-gradient-from: #ecfeff !important;
+}
+.parent-enrollment-theme .to-indigo-50 {
+  --tw-gradient-to: #f0fdfa !important;
+}
+.parent-enrollment-theme .from-amber-50 {
+  --tw-gradient-from: #fffbeb !important;
+}
+.parent-enrollment-theme .to-orange-50 {
+  --tw-gradient-to: #fff7ed !important;
+}
+
+.parent-enrollment-theme .bg-indigo-50 {
+  background-color: #fff7ed !important;
+}
+.parent-enrollment-theme .text-indigo-700,
+.parent-enrollment-theme .text-indigo-800 {
+  color: #9a3412 !important;
+}
+.parent-enrollment-theme .ring-indigo-100,
+.parent-enrollment-theme .border-indigo-100 {
+  --tw-ring-color: #fed7aa !important;
+  border-color: #fed7aa !important;
+}
+
+.parent-enrollment-theme .bg-sky-50 {
+  background-color: #ecfeff !important;
+}
+.parent-enrollment-theme .text-sky-700,
+.parent-enrollment-theme .text-sky-800 {
+  color: #0e7490 !important;
+}
+
+.parent-enrollment-theme .bg-emerald-50 {
+  background-color: #f0fdfa !important;
+}
+.parent-enrollment-theme .text-emerald-700,
+.parent-enrollment-theme .text-emerald-800 {
+  color: #0f766e !important;
+}
+
+.parent-enrollment-theme .bg-indigo-600 {
+  background-color: #0f766e !important;
+}
+.parent-enrollment-theme .hover\:bg-indigo-700:hover {
+  background-color: #115e59 !important;
+}
+
+.parent-enrollment-theme .focus-visible\:border-indigo-400:focus-visible {
+  border-color: #0d9488 !important;
+}
+.parent-enrollment-theme .focus-visible\:ring-indigo-100:focus-visible {
+  --tw-ring-color: #ccfbf1 !important;
+}
+
+.parent-enrollment-theme input[type="checkbox"] {
+  accent-color: #0f766e;
+}
+
+.parent-enrollment-theme .bg-gradient-to-r.from-indigo-500.via-violet-500.to-sky-500 {
+  background-image: linear-gradient(90deg, #c2410c, #d97706, #0f766e) !important;
+}
+
+.parent-enrollment-theme .bg-slate-950 {
+  background-color: #16302b !important;
+}
