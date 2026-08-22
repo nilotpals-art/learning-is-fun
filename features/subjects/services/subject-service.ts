@@ -103,3 +103,20 @@ export async function updateSubjectRecord(
   if (error) throw error;
   return Boolean(data);
 }
+
+export async function deleteSubjectRecord(
+  instituteId: string,
+  id: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("subjects")
+    .delete()
+    .eq("institute_id", instituteId)
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+}

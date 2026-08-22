@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  deleteSubjectRecord,
   getSubject,
   insertSubject,
   subjectNameExists,
@@ -102,5 +103,41 @@ export async function updateSubject(
     return { status: "success", message: "Subject updated." };
   } catch {
     return databaseError();
+  }
+}
+
+export async function deleteSubject(
+  idInput: unknown
+): Promise<SubjectActionResult> {
+  const id = subjectIdSchema.safeParse(idInput);
+  if (!id.success) return { status: "error", message: "Invalid Subject." };
+
+  const instituteId = await requireInstituteId();
+  try {
+    const existing = await getSubject(instituteId, id.data);
+    if (!existing) return { status: "error", message: "Subject not found." };
+
+    const deleted = await deleteSubjectRecord(instituteId, id.data);
+    if (!deleted) return { status: "error", message: "Subject not found." };
+
+    revalidatePath(PATH);
+    return { status: "success", message: "Subject deleted." };
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "23503"
+    ) {
+      return {
+        status: "error",
+        message:
+          "This Subject is already in use and cannot be deleted. Remove its linked classes, batches, schedules, practice work, or other academic records first.",
+      };
+    }
+    return {
+      status: "error",
+      message: "We could not delete the Subject. Please try again.",
+    };
   }
 }

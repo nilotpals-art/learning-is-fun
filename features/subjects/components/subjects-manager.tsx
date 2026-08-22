@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -44,6 +45,7 @@ import {
 import { Toaster, toast } from "@/components/ui/toast";
 import {
   createSubject,
+  deleteSubject,
   updateSubject,
 } from "@/features/subjects/actions/subject-actions";
 import type { Subject } from "@/features/subjects/types/subject";
@@ -165,6 +167,8 @@ export function SubjectsManager({ subjects }: { subjects: Subject[] }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [viewing, setViewing] = useState<Subject | null>(null);
+  const [deleting, setDeleting] = useState<Subject | null>(null);
+  const [isDeleting, startDeleteTransition] = useTransition();
 
   const filteredSubjects = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
@@ -189,6 +193,20 @@ export function SubjectsManager({ subjects }: { subjects: Subject[] }) {
     router.refresh();
   }
 
+  function confirmDelete() {
+    if (!deleting) return;
+    startDeleteTransition(async () => {
+      const result = await deleteSubject(deleting.id);
+      if (result.status === "error") {
+        toast.add({ title: "Unable to delete Subject", description: result.message, type: "error" });
+        return;
+      }
+      setDeleting(null);
+      toast.add({ title: "Subject deleted", description: result.message, type: "success" });
+      router.refresh();
+    });
+  }
+
   function Actions({ subject }: { subject: Subject }) {
     return (
       <DropdownMenu>
@@ -211,6 +229,10 @@ export function SubjectsManager({ subjects }: { subjects: Subject[] }) {
           <DropdownMenuItem onClick={() => openEdit(subject)}>
             <Pencil />
             Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setDeleting(subject)}>
+            <Trash2 />
+            Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -354,6 +376,26 @@ export function SubjectsManager({ subjects }: { subjects: Subject[] }) {
               </DialogFooter>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && !isDeleting && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Subject?</DialogTitle>
+            <DialogDescription>
+              {deleting ? `Delete ${deleting.subjectName}? This is only allowed when the Subject is not used anywhere else.` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+            Subjects linked to classes, batches, schedules, practice work, or other academic records are protected and cannot be deleted.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={isDeleting} onClick={() => setDeleting(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={isDeleting} onClick={confirmDelete}>
+              {isDeleting ? "Deleting…" : "Delete Subject"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

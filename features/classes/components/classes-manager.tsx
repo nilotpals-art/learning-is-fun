@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -44,6 +45,7 @@ import {
 import { Toaster, toast } from "@/components/ui/toast";
 import {
   createAcademicClass,
+  deleteAcademicClass,
   updateAcademicClass,
 } from "@/features/classes/actions/class-actions";
 import type { AcademicClass } from "@/features/classes/types/academic-class";
@@ -203,6 +205,8 @@ export function ClassesManager({ classes }: { classes: AcademicClass[] }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AcademicClass | null>(null);
   const [viewing, setViewing] = useState<AcademicClass | null>(null);
+  const [deleting, setDeleting] = useState<AcademicClass | null>(null);
+  const [isDeleting, startDeleteTransition] = useTransition();
 
   const filteredClasses = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
@@ -227,6 +231,20 @@ export function ClassesManager({ classes }: { classes: AcademicClass[] }) {
     router.refresh();
   }
 
+  function confirmDelete() {
+    if (!deleting) return;
+    startDeleteTransition(async () => {
+      const result = await deleteAcademicClass(deleting.id);
+      if (result.status === "error") {
+        toast.add({ title: "Unable to delete Class", description: result.message, type: "error" });
+        return;
+      }
+      setDeleting(null);
+      toast.add({ title: "Class deleted", description: result.message, type: "success" });
+      router.refresh();
+    });
+  }
+
   function Actions({ academicClass }: { academicClass: AcademicClass }) {
     return (
       <DropdownMenu>
@@ -249,6 +267,10 @@ export function ClassesManager({ classes }: { classes: AcademicClass[] }) {
           <DropdownMenuItem onClick={() => openEdit(academicClass)}>
             <Pencil />
             Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setDeleting(academicClass)}>
+            <Trash2 />
+            Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -407,6 +429,26 @@ export function ClassesManager({ classes }: { classes: AcademicClass[] }) {
               </DialogFooter>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deleting)} onOpenChange={(open) => !open && !isDeleting && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Class?</DialogTitle>
+            <DialogDescription>
+              {deleting ? `Delete ${deleting.className}? This is only allowed when the Class is not used anywhere else.` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+            Classes linked to students, batches, fees, schedules, practice work, or other academic records are protected and cannot be deleted.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={isDeleting} onClick={() => setDeleting(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={isDeleting} onClick={confirmDelete}>
+              {isDeleting ? "Deleting…" : "Delete Class"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

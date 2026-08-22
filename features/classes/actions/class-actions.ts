@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import {
   academicClassNameExists,
+  deleteAcademicClassRecord,
   getAcademicClass,
   insertAcademicClass,
   updateAcademicClassRecord,
@@ -102,5 +103,41 @@ export async function updateAcademicClass(
     return { status: "success", message: "Class updated." };
   } catch {
     return databaseError();
+  }
+}
+
+export async function deleteAcademicClass(
+  idInput: unknown
+): Promise<AcademicClassActionResult> {
+  const id = classIdSchema.safeParse(idInput);
+  if (!id.success) return { status: "error", message: "Invalid Class." };
+
+  const instituteId = await requireInstituteId();
+  try {
+    const existing = await getAcademicClass(instituteId, id.data);
+    if (!existing) return { status: "error", message: "Class not found." };
+
+    const deleted = await deleteAcademicClassRecord(instituteId, id.data);
+    if (!deleted) return { status: "error", message: "Class not found." };
+
+    revalidatePath(PATH);
+    return { status: "success", message: "Class deleted." };
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "23503"
+    ) {
+      return {
+        status: "error",
+        message:
+          "This Class is already in use and cannot be deleted. Remove its linked students, batches, fee structures, schedules, or other academic records first.",
+      };
+    }
+    return {
+      status: "error",
+      message: "We could not delete the Class. Please try again.",
+    };
   }
 }
