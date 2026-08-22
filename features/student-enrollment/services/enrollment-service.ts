@@ -4,6 +4,11 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { normalizeEmail, normalizeUpperText } from "@/lib/validation/normalization";
+import {
+  createManagedAuthUser,
+  deleteManagedAuthUser,
+  findManagedAuthUserByEmail,
+} from "@/lib/supabase/admin";
 
 export type EnrollmentPurpose = "STUDENT" | "PARENT";
 
@@ -210,8 +215,8 @@ export async function verifyEnrollmentOtp(token: string, purpose: EnrollmentPurp
 }
 
 export async function submitEnrollment(token: string, input: {
-  name: string; motherName?: string; gender: string; dateOfBirth: string; studentMobile: string; studentEmail: string;
-  address?: string; parentName: string; relationship: string; parentEmail: string; rulesAccepted: boolean;
+  name: string; motherName?: string; gender: string; dateOfBirth: string; studentMobile: string; studentEmail: string | null;
+  address?: string; parentName: string; relationship: string; parentEmail: string | null; rulesAccepted: boolean;
 }) {
   const supabase = adminClient();
   const { data, error } = await supabase.rpc("submit_parent_enrollment", {
@@ -221,13 +226,88 @@ export async function submitEnrollment(token: string, input: {
     p_gender: input.gender,
     p_date_of_birth: input.dateOfBirth,
     p_student_mobile: input.studentMobile,
-    p_student_email: normalizeEmail(input.studentEmail),
+    p_student_email: input.studentEmail ? normalizeEmail(input.studentEmail) : null,
     p_address: normalizeUpperText(input.address ?? ""),
     p_parent_name: normalizeUpperText(input.parentName),
     p_relationship: input.relationship,
-    p_parent_email: normalizeEmail(input.parentEmail),
+    p_parent_email: input.parentEmail ? normalizeEmail(input.parentEmail) : null,
     p_rules_accepted: input.rulesAccepted,
   });
   if (error) throw error;
   return data as { student_id:string; parent_id:string; parent_created:boolean; admission_no:string; enrollment_date:string };
+}
+
+async function ensureEnrollmentPortalIdentity(input: {
+  table: "students" | "parents";
+  id: string;
+  email: string | null;
+  role: "Student" | "Parent";
+}) {
+  if (!input.email) return;
+  const email = normalizeEmail(input.email);
+  const supabase = adminClient();
+  const { data: domain, error: domainError } = await supabase
+    .from(input.table)
+    .select("id,institute_id,name,mobile,email,profile_id,is_active")
+    .eq("id", input.id)
+    .maybeSingle();
+  if (domainError) throw domainError;
+  if (!domain) throw new Error(`${input.role} record is unavailable for portal provisioning.`);
+  if (domain.email !== email) throw new Error(`${input.role} email changed before portal provisioning.`);
+  if (domain.profile_id) return;
+
+  const { data: existingProfile, error: profileLookupError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (profileLookupError) throw profileLookupError;
+  if (existingProfile) throw new Error(`A portal profile already uses ${email}.`);
+  if (await findManagedAuthUserByEmail(email)) throw new Error(`An Auth account already uses ${email}.`);
+
+  const { data: roleRow, error: roleError } = await supabase
+    .from("roles")
+    .select("id")
+    .eq("name", input.role)
+    .maybeSingle();
+  if (roleError) throw roleError;
+  if (!roleRow) throw new Error(`${input.role} role is not configured.`);
+
+  const authUser = await createManagedAuthUser(email);
+  let profileCreated = false;
+  try {
+    const { error: insertProfileError } = await supabase.from("profiles").insert({
+      id: authUser.id,
+      institute_id: domain.institute_id,
+      name: domain.name,
+      mobile: domain.mobile,
+      role: input.role,
+      role_id: roleRow.id,
+      is_active: input.role === "Parent" ? domain.is_active !== false : true,
+      email,
+    });
+    if (insertProfileError) throw insertProfileError;
+    profileCreated = true;
+
+    const { error: linkError } = await supabase
+      .from(input.table)
+      .update({ profile_id: authUser.id, updated_at: new Date().toISOString() })
+      .eq("id", input.id)
+      .is("profile_id", null);
+    if (linkError) throw linkError;
+  } catch (error) {
+    if (profileCreated) await supabase.from("profiles").delete().eq("id", authUser.id);
+    await deleteManagedAuthUser(authUser.id);
+    throw error;
+  }
+}
+
+export async function provisionEnrollmentPortalIdentities(input: {
+  studentId: string;
+  parentId: string;
+  studentEmail: string | null;
+  parentEmail: string | null;
+}) {
+  await ensureEnrollmentPortalIdentity({ table: "students", id: input.studentId, email: input.studentEmail, role: "Student" });
+  await ensureEnrollmentPortalIdentity({ table: "parents", id: input.parentId, email: input.parentEmail, role: "Parent" });
 }
