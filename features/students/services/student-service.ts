@@ -27,7 +27,7 @@ interface StudentQueryRecord {
   date_of_birth: string;
   gender: string;
   mobile: string;
-  email: string;
+  email: string | null;
   address: string | null;
   admission_date: string;
   status: StudentStatus;
@@ -35,7 +35,7 @@ interface StudentQueryRecord {
   links:
     | Array<{
         relationship: string;
-        parent: { id: string; name: string; mobile: string; email: string } | null;
+        parent: { id: string; name: string; mobile: string; email: string | null } | null;
       }>
     | null;
 }
@@ -51,7 +51,7 @@ function toStudent(record: StudentQueryRecord): StudentRecord {
     dateOfBirth: record.date_of_birth,
     gender: record.gender,
     mobile: record.mobile,
-    email: record.email,
+    email: record.email ?? "",
     address: record.address,
     admissionDate: record.admission_date,
     status: record.status,
@@ -59,7 +59,7 @@ function toStudent(record: StudentQueryRecord): StudentRecord {
     parentId: parent?.id ?? "",
     parentName: parent?.name ?? "Not available",
     parentMobile: parent?.mobile ?? "Not available",
-    parentEmail: parent?.email ?? "Not available",
+    parentEmail: parent?.email ?? "",
     relationship: link?.relationship ?? "Not available",
   };
 }
@@ -112,6 +112,7 @@ export async function listActiveAcademicYears(
 }
 
 export async function studentEmailExists(email: string, exceptStudentId?: string): Promise<boolean> {
+  if (!email.trim()) return false;
   const supabase = await createClient();
   let query = supabase
     .from("students")
@@ -124,6 +125,7 @@ export async function studentEmailExists(email: string, exceptStudentId?: string
 }
 
 export async function parentEmailExists(instituteId: string, email: string, exceptParentId?: string): Promise<boolean> {
+  if (!email.trim()) return false;
   const supabase = await createClient();
   let query = supabase
     .from("parents")
@@ -205,7 +207,7 @@ export async function updateStudentRecord(
       date_of_birth: values.dateOfBirth,
       gender: values.gender,
       mobile: normalizeTrimmedText(values.mobile),
-      email: normalizeEmail(values.email),
+      email: values.email ? normalizeEmail(values.email) : null,
       address: normalizeUpperText(values.address) || null,
       admission_date: values.admissionDate,
       status: values.status,
@@ -242,7 +244,7 @@ export async function updateParentRecord(
     .update({
       name: normalizeUpperText(values.parentName),
       mobile: normalizeTrimmedText(values.parentMobile),
-      email: normalizeEmail(values.parentEmail),
+      email: values.parentEmail ? normalizeEmail(values.parentEmail) : null,
       updated_at: new Date().toISOString(),
     })
     .eq("institute_id", instituteId)
