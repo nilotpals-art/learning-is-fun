@@ -13,7 +13,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ElementType } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,7 @@ const fieldClass =
 const upper = (value: string) => value.toLocaleUpperCase("en-IN");
 const cardClass = "overflow-hidden border-0 bg-white/95 shadow-lg ring-1 ring-slate-200/70";
 
-function SectionTitle({ icon: Icon, title, subtitle, tone }: { icon: React.ElementType; title: string; subtitle?: string; tone: "indigo" | "emerald" | "amber" | "violet" | "sky" }) {
+function SectionTitle({ icon: Icon, title, subtitle, tone }: { icon: ElementType; title: string; subtitle?: string; tone: "indigo" | "emerald" | "amber" | "violet" | "sky" }) {
   const toneClass = {
     indigo: "bg-indigo-50 text-indigo-700 ring-indigo-100",
     emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
