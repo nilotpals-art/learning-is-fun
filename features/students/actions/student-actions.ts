@@ -55,11 +55,7 @@ async function compensateCreatedAdmission(
 ): Promise<StudentActionResult> {
   try {
     if (removeStudentAuth) {
-      const profileId = await getIdentityProfileId(
-        instituteId,
-        "students",
-        foundation.student_id
-      );
+      const profileId = await getIdentityProfileId(instituteId, "students", foundation.student_id);
       if (profileId) await deleteManagedAuthUser(profileId);
     }
     await compensateAdmissionFoundation(foundation);
@@ -106,12 +102,7 @@ export async function createStudent(input: unknown): Promise<StudentActionResult
     }
     const feeStructure = await findFeeStructure(profile, values.academicYearId, values.classId);
 
-    const parent = await resolveParentByEmail(
-      instituteId,
-      values.parentEmail,
-      values.parentName,
-      values.parentMobile
-    );
+    const parent = await resolveParentByEmail(instituteId, values.parentEmail, values.parentName, values.parentMobile);
     let parentId: string | null = null;
     if (parent) {
       if (!parent.matches && values.useExistingParentId !== parent.id) {
@@ -132,20 +123,10 @@ export async function createStudent(input: unknown): Promise<StudentActionResult
     }
 
     const foundation = await createAdmissionFoundation(values, parentId);
-    const studentIdentity = await provisionStudentIdentity({
-      studentId: foundation.student_id,
-      email: values.email,
-    });
+    const studentIdentity = await provisionStudentIdentity({ studentId: foundation.student_id, email: values.email });
     if (studentIdentity.status !== "created" && studentIdentity.status !== "reused") {
-      if (
-        studentIdentity.status === "error" &&
-        studentIdentity.code === "manual_reconciliation_required"
-      ) {
-        return {
-          status: "error",
-          code: "manual_reconciliation_required",
-          message: studentIdentity.message,
-        };
+      if (studentIdentity.status === "error" && studentIdentity.code === "manual_reconciliation_required") {
+        return { status: "error", code: "manual_reconciliation_required", message: studentIdentity.message };
       }
       return compensateCreatedAdmission(instituteId, foundation, false);
     }
@@ -157,32 +138,21 @@ export async function createStudent(input: unknown): Promise<StudentActionResult
       relationship: values.relationship,
     });
     if (parentIdentity.status !== "created" && parentIdentity.status !== "reused") {
-      if (
-        parentIdentity.status === "error" &&
-        parentIdentity.code === "manual_reconciliation_required"
-      ) {
-        return {
-          status: "error",
-          code: "manual_reconciliation_required",
-          message: parentIdentity.message,
-        };
+      if (parentIdentity.status === "error" && parentIdentity.code === "manual_reconciliation_required") {
+        return { status: "error", code: "manual_reconciliation_required", message: parentIdentity.message };
       }
-      return compensateCreatedAdmission(
-        instituteId,
-        foundation,
-        studentIdentity.status === "created"
-      );
+      return compensateCreatedAdmission(instituteId, foundation, studentIdentity.status === "created");
     }
 
     let feesWarning: string | undefined;
     if (feeStructure) {
       try {
-        const overrides = values.feeStructureId === feeStructure.id ? values.feeOverrides : feeStructure.items.map((item) => ({ itemId: item.id, include: true, amount: item.amount, discountType: item.defaultDiscountType, discountValue: item.defaultDiscountValue }));
+        const overrides = values.feeStructureId === feeStructure.id
+          ? values.feeOverrides
+          : feeStructure.items.map((item) => ({ itemId: item.id, include: true, amount: item.amount, discountType: item.defaultDiscountType, discountValue: item.defaultDiscountValue }));
         await applyFeeStructure(profile, foundation.student_id, feeStructure.id, overrides);
       } catch (error) {
-        const message = error && typeof error === "object" && "message" in error
-          ? String(error.message)
-          : "";
+        const message = error && typeof error === "object" && "message" in error ? String(error.message) : "";
         feesWarning = message.includes("FEES_NO_APPLICABLE_MONTHS")
           ? "Student admission succeeded, but no monthly due date remains within the selected Academic Year. Review Fees from Student Fees."
           : "Student admission succeeded, but Fee assignment failed. Complete it from Student Fees.";
@@ -201,20 +171,13 @@ export async function createStudent(input: unknown): Promise<StudentActionResult
     };
   } catch (error) {
     const databaseError = error as { code?: string; message?: string };
-    if (databaseError.code === "23505") {
-      return saveError("A Student or Parent account with these details already exists.");
-    }
-    if (databaseError.message?.includes("ACADEMIC_YEAR")) {
-      return saveError("The selected Academic Year is inactive or unavailable.");
-    }
+    if (databaseError.code === "23505") return saveError("A Student or Parent account with these details already exists.");
+    if (databaseError.message?.includes("ACADEMIC_YEAR")) return saveError("The selected Academic Year is inactive or unavailable.");
     return saveError();
   }
 }
 
-export async function updateStudent(
-  idInput: unknown,
-  input: unknown
-): Promise<StudentActionResult> {
+export async function updateStudent(idInput: unknown, input: unknown): Promise<StudentActionResult> {
   const id = studentIdSchema.safeParse(idInput);
   const values = studentEditSchema.safeParse(input);
   if (!id.success || !values.success) {
@@ -230,15 +193,14 @@ export async function updateStudent(
     const current = await getStudent(instituteId, id.data);
     if (!current) return saveError("Student not found.");
     if (!current.parentId) return saveError("Parent / Guardian record is unavailable.");
-    if (await studentEmailExists(values.data.email, id.data)) {
-      return saveError("Another Student account already uses this email address.");
-    }
-    if (await parentEmailExists(instituteId, values.data.parentEmail, current.parentId)) {
-      return saveError("Another Parent account already uses this email address.");
-    }
+    if (await studentEmailExists(values.data.email, id.data)) return saveError("Another Student account already uses this email address.");
+    if (await parentEmailExists(instituteId, values.data.parentEmail, current.parentId)) return saveError("Another Parent account already uses this email address.");
 
     const studentProfileId = await getIdentityProfileId(instituteId, "students", id.data);
     const parentProfileId = await getIdentityProfileId(instituteId, "parents", current.parentId);
+    if (studentProfileId && !values.data.email) return saveError("Student Email cannot be removed while Student Portal login exists. Change it to another email instead.");
+    if (parentProfileId && !values.data.parentEmail) return saveError("Parent Email cannot be removed while Parent Portal login exists. Change it to another email instead.");
+
     let studentAuthChanged = false;
     let parentAuthChanged = false;
 
@@ -252,16 +214,12 @@ export async function updateStudent(
         parentAuthChanged = true;
       }
 
-      if (!(await updateStudentRecord(instituteId, id.data, values.data))) {
-        throw new Error("STUDENT_NOT_FOUND");
-      }
-      if (!(await updateParentRecord(instituteId, current.parentId, id.data, values.data))) {
-        throw new Error("PARENT_NOT_FOUND");
-      }
+      if (!(await updateStudentRecord(instituteId, id.data, values.data))) throw new Error("STUDENT_NOT_FOUND");
+      if (!(await updateParentRecord(instituteId, current.parentId, id.data, values.data))) throw new Error("PARENT_NOT_FOUND");
     } catch (updateError) {
       try {
-        if (parentAuthChanged && parentProfileId) await updateManagedAuthUserEmail(parentProfileId, current.parentEmail);
-        if (studentAuthChanged && studentProfileId) await updateManagedAuthUserEmail(studentProfileId, current.email);
+        if (parentAuthChanged && parentProfileId && current.parentEmail) await updateManagedAuthUserEmail(parentProfileId, current.parentEmail);
+        if (studentAuthChanged && studentProfileId && current.email) await updateManagedAuthUserEmail(studentProfileId, current.email);
       } catch (rollbackError) {
         console.error("Identity email rollback failed after Student edit", { studentId: id.data, rollbackError });
         return {
@@ -271,6 +229,24 @@ export async function updateStudent(
         };
       }
       throw updateError;
+    }
+
+    if (!studentProfileId && values.data.email) {
+      const provisioned = await provisionStudentIdentity({ studentId: id.data, email: values.data.email });
+      if (provisioned.status !== "created" && provisioned.status !== "reused") {
+        return saveError("Student details were saved, but Student Portal login could not be created. Review the Student email and try again.");
+      }
+    }
+    if (!parentProfileId && values.data.parentEmail) {
+      const provisioned = await provisionParentIdentity({
+        parentId: current.parentId,
+        email: values.data.parentEmail,
+        studentId: id.data,
+        relationship: values.data.relationship,
+      });
+      if (provisioned.status !== "created" && provisioned.status !== "reused") {
+        return saveError("Parent details were saved, but Parent Portal login could not be created. Review the Parent email and try again.");
+      }
     }
 
     revalidatePath(PATH);
