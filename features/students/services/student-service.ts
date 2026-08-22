@@ -28,16 +28,15 @@ interface StudentQueryRecord {
   gender: string;
   mobile: string;
   email: string | null;
+  school_name: string | null;
   address: string | null;
   admission_date: string;
   status: StudentStatus;
   comments: string | null;
-  links:
-    | Array<{
-        relationship: string;
-        parent: { id: string; name: string; mobile: string; email: string | null } | null;
-      }>
-    | null;
+  links: Array<{
+    relationship: string;
+    parent: { id: string; name: string; mobile: string; email: string | null } | null;
+  }> | null;
 }
 
 function toStudent(record: StudentQueryRecord): StudentRecord {
@@ -52,6 +51,7 @@ function toStudent(record: StudentQueryRecord): StudentRecord {
     gender: record.gender,
     mobile: record.mobile,
     email: record.email ?? "",
+    schoolName: record.school_name,
     address: record.address,
     admissionDate: record.admission_date,
     status: record.status,
@@ -65,59 +65,33 @@ function toStudent(record: StudentQueryRecord): StudentRecord {
 }
 
 const STUDENT_SELECT =
-  "id, admission_no, name, mother_name, date_of_birth, gender, mobile, email, address, admission_date, status, comments, links:student_parent_links(relationship, parent:parents(id, name, mobile, email))";
+  "id, admission_no, name, mother_name, date_of_birth, gender, mobile, email, school_name, address, admission_date, status, comments, links:student_parent_links(relationship, parent:parents(id, name, mobile, email))";
 
 export async function listStudents(instituteId: string): Promise<StudentRecord[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("students")
-    .select(STUDENT_SELECT)
-    .eq("institute_id", instituteId)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("students").select(STUDENT_SELECT).eq("institute_id", instituteId).order("created_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as StudentQueryRecord[]).map(toStudent);
 }
 
-export async function getStudent(
-  instituteId: string,
-  id: string
-): Promise<StudentRecord | null> {
+export async function getStudent(instituteId: string, id: string): Promise<StudentRecord | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("students")
-    .select(STUDENT_SELECT)
-    .eq("institute_id", instituteId)
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await supabase.from("students").select(STUDENT_SELECT).eq("institute_id", instituteId).eq("id", id).maybeSingle();
   if (error) throw error;
   return data ? toStudent(data as unknown as StudentQueryRecord) : null;
 }
 
-export async function listActiveAcademicYears(
-  instituteId: string
-): Promise<StudentAcademicYearOption[]> {
+export async function listActiveAcademicYears(instituteId: string): Promise<StudentAcademicYearOption[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("academic_years")
-    .select("id, name, is_current")
-    .eq("institute_id", instituteId)
-    .eq("is_active", true)
-    .order("start_date", { ascending: false });
+  const { data, error } = await supabase.from("academic_years").select("id, name, is_current").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((year) => ({
-    id: year.id as string,
-    name: year.name as string,
-    isCurrent: year.is_current === true,
-  }));
+  return (data ?? []).map((year) => ({ id: year.id as string, name: year.name as string, isCurrent: year.is_current === true }));
 }
 
 export async function studentEmailExists(email: string, exceptStudentId?: string): Promise<boolean> {
   if (!email.trim()) return false;
   const supabase = await createClient();
-  let query = supabase
-    .from("students")
-    .select("id", { count: "exact", head: true })
-    .eq("email", normalizeEmail(email));
+  let query = supabase.from("students").select("id", { count: "exact", head: true }).eq("email", normalizeEmail(email));
   if (exceptStudentId) query = query.neq("id", exceptStudentId);
   const { count, error } = await query;
   if (error) throw error;
@@ -127,21 +101,14 @@ export async function studentEmailExists(email: string, exceptStudentId?: string
 export async function parentEmailExists(instituteId: string, email: string, exceptParentId?: string): Promise<boolean> {
   if (!email.trim()) return false;
   const supabase = await createClient();
-  let query = supabase
-    .from("parents")
-    .select("id", { count: "exact", head: true })
-    .eq("institute_id", instituteId)
-    .eq("email", normalizeEmail(email));
+  let query = supabase.from("parents").select("id", { count: "exact", head: true }).eq("institute_id", instituteId).eq("email", normalizeEmail(email));
   if (exceptParentId) query = query.neq("id", exceptParentId);
   const { count, error } = await query;
   if (error) throw error;
   return (count ?? 0) > 0;
 }
 
-export async function createAdmissionFoundation(
-  values: StudentCreateValues,
-  parentId: string | null
-): Promise<AdmissionFoundationResult> {
+export async function createAdmissionFoundation(values: StudentCreateValues, parentId: string | null): Promise<AdmissionFoundationResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_student_admission_foundation", {
     p_academic_year_id: values.academicYearId,
@@ -162,12 +129,13 @@ export async function createAdmissionFoundation(
     p_relationship: values.relationship,
   });
   if (error) throw error;
-  return data as AdmissionFoundationResult;
+  const result = data as AdmissionFoundationResult;
+  const { error: schoolError } = await supabase.from("students").update({ school_name: normalizeUpperText(values.schoolName) || null }).eq("id", result.student_id);
+  if (schoolError) throw schoolError;
+  return result;
 }
 
-export async function compensateAdmissionFoundation(
-  result: AdmissionFoundationResult
-): Promise<void> {
+export async function compensateAdmissionFoundation(result: AdmissionFoundationResult): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("compensate_student_admission_foundation", {
     p_student_id: result.student_id,
@@ -177,86 +145,48 @@ export async function compensateAdmissionFoundation(
   if (error) throw error;
 }
 
-export async function getIdentityProfileId(
-  instituteId: string,
-  table: "students" | "parents",
-  id: string
-): Promise<string | null> {
+export async function getIdentityProfileId(instituteId: string, table: "students" | "parents", id: string): Promise<string | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from(table)
-    .select("profile_id")
-    .eq("institute_id", instituteId)
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await supabase.from(table).select("profile_id").eq("institute_id", instituteId).eq("id", id).maybeSingle();
   if (error) throw error;
   return (data?.profile_id as string | null | undefined) ?? null;
 }
 
-export async function updateStudentRecord(
-  instituteId: string,
-  id: string,
-  values: StudentEditValues
-): Promise<boolean> {
+export async function updateStudentRecord(instituteId: string, id: string, values: StudentEditValues): Promise<boolean> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("students")
-    .update({
-      name: normalizeUpperText(values.name),
-      mother_name: normalizeUpperText(values.motherName) || null,
-      date_of_birth: values.dateOfBirth,
-      gender: values.gender,
-      mobile: normalizeTrimmedText(values.mobile),
-      email: values.email ? normalizeEmail(values.email) : null,
-      address: normalizeUpperText(values.address) || null,
-      admission_date: values.admissionDate,
-      status: values.status,
-      comments: normalizeUpperText(values.comments) || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("institute_id", instituteId)
-    .eq("id", id)
-    .select("id")
-    .maybeSingle();
+  const { data, error } = await supabase.from("students").update({
+    name: normalizeUpperText(values.name),
+    mother_name: normalizeUpperText(values.motherName) || null,
+    date_of_birth: values.dateOfBirth,
+    gender: values.gender,
+    mobile: normalizeTrimmedText(values.mobile),
+    email: values.email ? normalizeEmail(values.email) : null,
+    school_name: normalizeUpperText(values.schoolName) || null,
+    address: normalizeUpperText(values.address) || null,
+    admission_date: values.admissionDate,
+    status: values.status,
+    comments: normalizeUpperText(values.comments) || null,
+    updated_at: new Date().toISOString(),
+  }).eq("institute_id", instituteId).eq("id", id).select("id").maybeSingle();
   if (error) throw error;
   return Boolean(data);
 }
 
-export async function updateParentRecord(
-  instituteId: string,
-  parentId: string,
-  studentId: string,
-  values: StudentEditValues
-): Promise<boolean> {
+export async function updateParentRecord(instituteId: string, parentId: string, studentId: string, values: StudentEditValues): Promise<boolean> {
   const supabase = await createClient();
-  const { data: link, error: linkError } = await supabase
-    .from("student_parent_links")
-    .select("id")
-    .eq("institute_id", instituteId)
-    .eq("student_id", studentId)
-    .eq("parent_id", parentId)
-    .maybeSingle();
+  const { data: link, error: linkError } = await supabase.from("student_parent_links").select("id").eq("institute_id", instituteId).eq("student_id", studentId).eq("parent_id", parentId).maybeSingle();
   if (linkError) throw linkError;
   if (!link) return false;
 
-  const { error: parentError } = await supabase
-    .from("parents")
-    .update({
-      name: normalizeUpperText(values.parentName),
-      mobile: normalizeTrimmedText(values.parentMobile),
-      email: values.parentEmail ? normalizeEmail(values.parentEmail) : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("institute_id", instituteId)
-    .eq("id", parentId);
+  const { error: parentError } = await supabase.from("parents").update({
+    name: normalizeUpperText(values.parentName),
+    mobile: normalizeTrimmedText(values.parentMobile),
+    email: values.parentEmail ? normalizeEmail(values.parentEmail) : null,
+    updated_at: new Date().toISOString(),
+  }).eq("institute_id", instituteId).eq("id", parentId);
   if (parentError) throw parentError;
 
-  const { error: relationshipError } = await supabase
-    .from("student_parent_links")
-    .update({ relationship: values.relationship })
-    .eq("institute_id", instituteId)
-    .eq("student_id", studentId)
-    .eq("parent_id", parentId);
+  const { error: relationshipError } = await supabase.from("student_parent_links").update({ relationship: values.relationship }).eq("institute_id", instituteId).eq("student_id", studentId).eq("parent_id", parentId);
   if (relationshipError) throw relationshipError;
   return true;
 }
