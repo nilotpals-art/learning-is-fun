@@ -111,12 +111,27 @@ export async function listActiveAcademicYears(
   }));
 }
 
-export async function studentEmailExists(email: string): Promise<boolean> {
+export async function studentEmailExists(email: string, exceptStudentId?: string): Promise<boolean> {
   const supabase = await createClient();
-  const { count, error } = await supabase
+  let query = supabase
     .from("students")
     .select("id", { count: "exact", head: true })
     .eq("email", normalizeEmail(email));
+  if (exceptStudentId) query = query.neq("id", exceptStudentId);
+  const { count, error } = await query;
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+export async function parentEmailExists(instituteId: string, email: string, exceptParentId?: string): Promise<boolean> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("parents")
+    .select("id", { count: "exact", head: true })
+    .eq("institute_id", instituteId)
+    .eq("email", normalizeEmail(email));
+  if (exceptParentId) query = query.neq("id", exceptParentId);
+  const { count, error } = await query;
   if (error) throw error;
   return (count ?? 0) > 0;
 }
@@ -190,6 +205,7 @@ export async function updateStudentRecord(
       date_of_birth: values.dateOfBirth,
       gender: values.gender,
       mobile: normalizeTrimmedText(values.mobile),
+      email: normalizeEmail(values.email),
       address: normalizeUpperText(values.address) || null,
       admission_date: values.admissionDate,
       status: values.status,
@@ -202,4 +218,43 @@ export async function updateStudentRecord(
     .maybeSingle();
   if (error) throw error;
   return Boolean(data);
+}
+
+export async function updateParentRecord(
+  instituteId: string,
+  parentId: string,
+  studentId: string,
+  values: StudentEditValues
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: link, error: linkError } = await supabase
+    .from("student_parent_links")
+    .select("id")
+    .eq("institute_id", instituteId)
+    .eq("student_id", studentId)
+    .eq("parent_id", parentId)
+    .maybeSingle();
+  if (linkError) throw linkError;
+  if (!link) return false;
+
+  const { error: parentError } = await supabase
+    .from("parents")
+    .update({
+      name: normalizeUpperText(values.parentName),
+      mobile: normalizeTrimmedText(values.parentMobile),
+      email: normalizeEmail(values.parentEmail),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("institute_id", instituteId)
+    .eq("id", parentId);
+  if (parentError) throw parentError;
+
+  const { error: relationshipError } = await supabase
+    .from("student_parent_links")
+    .update({ relationship: values.relationship })
+    .eq("institute_id", instituteId)
+    .eq("student_id", studentId)
+    .eq("parent_id", parentId);
+  if (relationshipError) throw relationshipError;
+  return true;
 }
