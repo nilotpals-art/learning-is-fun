@@ -14,7 +14,9 @@ import {
   getIdentityProfileId,
   getStudent,
   listActiveAcademicYears,
+  parentEmailExists,
   studentEmailExists,
+  updateParentRecord,
   updateStudentRecord,
 } from "@/features/students/services/student-service";
 import type { StudentActionResult } from "@/features/students/types/student";
@@ -25,7 +27,7 @@ import {
 } from "@/features/students/validations/student-schema";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
-import { deleteManagedAuthUser } from "@/lib/supabase/admin";
+import { deleteManagedAuthUser, updateManagedAuthUserEmail } from "@/lib/supabase/admin";
 import { applyFeeStructure, findFeeStructure } from "@/features/fees/services/fee-structure-service";
 
 const PATH = "/students";
@@ -225,15 +227,59 @@ export async function updateStudent(
 
   const instituteId = await requireInstituteId();
   try {
-    if (!(await getStudent(instituteId, id.data))) {
-      return saveError("Student not found.");
+    const current = await getStudent(instituteId, id.data);
+    if (!current) return saveError("Student not found.");
+    if (!current.parentId) return saveError("Parent / Guardian record is unavailable.");
+    if (await studentEmailExists(values.data.email, id.data)) {
+      return saveError("Another Student account already uses this email address.");
     }
-    if (!(await updateStudentRecord(instituteId, id.data, values.data))) {
-      return saveError("Student not found.");
+    if (await parentEmailExists(instituteId, values.data.parentEmail, current.parentId)) {
+      return saveError("Another Parent account already uses this email address.");
     }
+
+    const studentProfileId = await getIdentityProfileId(instituteId, "students", id.data);
+    const parentProfileId = await getIdentityProfileId(instituteId, "parents", current.parentId);
+    let studentAuthChanged = false;
+    let parentAuthChanged = false;
+
+    try {
+      if (studentProfileId && current.email !== values.data.email) {
+        await updateManagedAuthUserEmail(studentProfileId, values.data.email);
+        studentAuthChanged = true;
+      }
+      if (parentProfileId && current.parentEmail !== values.data.parentEmail) {
+        await updateManagedAuthUserEmail(parentProfileId, values.data.parentEmail);
+        parentAuthChanged = true;
+      }
+
+      if (!(await updateStudentRecord(instituteId, id.data, values.data))) {
+        throw new Error("STUDENT_NOT_FOUND");
+      }
+      if (!(await updateParentRecord(instituteId, current.parentId, id.data, values.data))) {
+        throw new Error("PARENT_NOT_FOUND");
+      }
+    } catch (updateError) {
+      try {
+        if (parentAuthChanged && parentProfileId) await updateManagedAuthUserEmail(parentProfileId, current.parentEmail);
+        if (studentAuthChanged && studentProfileId) await updateManagedAuthUserEmail(studentProfileId, current.email);
+      } catch (rollbackError) {
+        console.error("Identity email rollback failed after Student edit", { studentId: id.data, rollbackError });
+        return {
+          status: "error",
+          code: "manual_reconciliation_required",
+          message: "The edit requires administrator reconciliation because an identity email rollback failed.",
+        };
+      }
+      throw updateError;
+    }
+
     revalidatePath(PATH);
-    return { status: "success", message: "Student updated." };
-  } catch {
+    return { status: "success", message: "Student and Parent details updated." };
+  } catch (error) {
+    const databaseError = error as { code?: string; message?: string };
+    if (databaseError.code === "23505" || databaseError.message?.toLowerCase().includes("email")) {
+      return saveError("The requested email address is already in use.");
+    }
     return saveError();
   }
 }
