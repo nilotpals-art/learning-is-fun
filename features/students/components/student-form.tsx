@@ -115,7 +115,12 @@ export function StudentForm({
       dateOfBirth: "",
       gender: "Male",
       mobile: "",
+      email: "",
       address: "",
+      parentName: "",
+      relationship: "Father",
+      parentMobile: "",
+      parentEmail: "",
       admissionDate: today,
       status: "Active",
       comments: "",
@@ -131,7 +136,12 @@ export function StudentForm({
         dateOfBirth: student.dateOfBirth,
         gender: student.gender as StudentEditValues["gender"],
         mobile: student.mobile,
+        email: student.email,
         address: student.address ?? "",
+        parentName: student.parentName,
+        relationship: student.relationship as StudentEditValues["relationship"],
+        parentMobile: student.parentMobile,
+        parentEmail: student.parentEmail,
         admissionDate: student.admissionDate,
         status: student.status,
         comments: student.comments ?? "",
@@ -194,6 +204,10 @@ export function StudentForm({
     startTransition(async () => {
       const result = await updateStudent(student.id, values);
       if (result.status === "error") {
+        for (const [field, messages] of Object.entries(result.fieldErrors ?? {})) {
+          const message = messages?.[0];
+          if (message && field in editForm.getValues()) editForm.setError(field as keyof StudentEditValues, { message });
+        }
         toast.add({ title: "Unable to save", description: result.message, type: "error" });
         return;
       }
@@ -215,24 +229,19 @@ export function StudentForm({
             <DialogTitle>{editing ? "Edit Student" : "Add Student"}</DialogTitle>
             <DialogDescription>
               {editing
-                ? "Update Student-owned information. Identity fields remain read-only."
+                ? "Administrator may correct Student and Parent details. Admission Number remains permanent and read-only."
                 : "Admission Number is generated automatically after validation."}
             </DialogDescription>
           </DialogHeader>
           <form id="student-form" onSubmit={editing ? submitEdit : submitCreate} className="space-y-6" noValidate>
             <FormSection title="Student Information" icon={UserRound} theme="students">
-              {editing && student ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField label="Admission Number"><Input value={student.admissionNumber} disabled /></FormField>
-                  <FormField label="Student Email"><Input value={student.email} disabled /></FormField>
-                </div>
-              ) : null}
+              {editing && student ? <FormField label="Admission Number"><Input value={student.admissionNumber} disabled /></FormField> : null}
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Student Name" error={errors.name?.message}><Input disabled={isPending} {...registerCommon("name")} /></FormField>
                 <FormField label="Date of Birth" error={errors.dateOfBirth?.message}><Input type="date" max={today} disabled={isPending} {...registerCommon("dateOfBirth")} /></FormField>
                 <FormField label="Gender" error={errors.gender?.message}><select className={fieldClass} disabled={isPending} {...registerCommon("gender")}>{STUDENT_GENDERS.map((value) => <option key={value}>{value}</option>)}</select></FormField>
-                <FormField label="Student Mobile" error={errors.mobile?.message}><Input disabled={isPending} {...registerCommon("mobile")} /></FormField>
-                {!editing ? <FormField label="Student Email" error={(errors as typeof createForm.formState.errors).email?.message}><Input type="email" disabled={isPending} {...createForm.register("email")} /></FormField> : null}
+                <FormField label="Student Mobile" error={errors.mobile?.message}><Input inputMode="numeric" maxLength={10} disabled={isPending} {...registerCommon("mobile")} /></FormField>
+                <FormField label="Student Email" error={errors.email?.message}><Input type="email" disabled={isPending} {...registerCommon("email")} /></FormField>
               </div>
             </FormSection>
 
@@ -242,10 +251,13 @@ export function StudentForm({
 
             <FormSection title="Parent / Guardian" icon={UsersRound} theme="classes">
               <div className="grid gap-4 sm:grid-cols-2">
-                {!editing ? <FormField label="Father / Guardian Name" error={createForm.formState.errors.parentName?.message}><Input disabled={isPending} {...createForm.register("parentName")} /></FormField> : <FormField label="Father / Guardian Name"><Input value={student?.parentName ?? ""} disabled /></FormField>}
+                <FormField label="Father / Guardian Name" error={errors.parentName?.message}><Input disabled={isPending} {...registerCommon("parentName")} /></FormField>
                 <FormField label="Mother Name" error={errors.motherName?.message}><Input disabled={isPending} {...registerCommon("motherName")} /></FormField>
-                {!editing ? <><FormField label="Relationship" error={createForm.formState.errors.relationship?.message}><select className={fieldClass} disabled={isPending} {...createForm.register("relationship")}>{PARENT_RELATIONSHIPS.map((value) => <option key={value}>{value}</option>)}</select></FormField><FormField label="Parent Mobile" error={createForm.formState.errors.parentMobile?.message}><Input disabled={isPending} {...createForm.register("parentMobile")} /></FormField><FormField label="Parent Email" error={createForm.formState.errors.parentEmail?.message}><Input type="email" disabled={isPending} {...createForm.register("parentEmail")} /></FormField></> : <><FormField label="Relationship"><Input value={student?.relationship ?? ""} disabled /></FormField><FormField label="Parent Mobile"><Input value={student?.parentMobile ?? ""} disabled /></FormField><FormField label="Parent Email"><Input value={student?.parentEmail ?? ""} disabled /></FormField></>}
+                <FormField label="Relationship" error={errors.relationship?.message}><select className={fieldClass} disabled={isPending} {...registerCommon("relationship")}>{PARENT_RELATIONSHIPS.map((value) => <option key={value}>{value}</option>)}</select></FormField>
+                <FormField label="Parent Mobile" error={errors.parentMobile?.message}><Input inputMode="numeric" maxLength={10} disabled={isPending} {...registerCommon("parentMobile")} /></FormField>
+                <FormField label="Parent Email" error={errors.parentEmail?.message}><Input type="email" disabled={isPending} {...registerCommon("parentEmail")} /></FormField>
               </div>
+              {editing ? <p className="text-xs text-muted-foreground">Changing a Parent's details updates the shared Parent account used by all children linked to that Parent.</p> : null}
             </FormSection>
 
             <FormSection title="Admission" icon={CalendarPlus} theme="academic-years">

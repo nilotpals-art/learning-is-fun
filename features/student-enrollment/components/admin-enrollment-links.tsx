@@ -1,0 +1,63 @@
+"use client";
+
+import { Copy, ExternalLink, Link2, MessageCircle, Plus } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast, Toaster } from "@/components/ui/toast";
+import { createEnrollmentLinkAction } from "@/features/student-enrollment/actions/enrollment-actions";
+
+const selectClass = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm";
+
+type Option = { id: string; name: string };
+type Invite = Record<string, unknown>;
+
+function oneName(value: unknown, key: string) {
+  const record = Array.isArray(value) ? value[0] : value;
+  return record && typeof record === "object" && key in record ? String((record as Record<string, unknown>)[key] ?? "") : "";
+}
+
+export function AdminEnrollmentLinks({ academicYears, classes, invites }: { academicYears: Option[]; classes: Option[]; invites: Invite[] }) {
+  const [isPending, startTransition] = useTransition();
+  const [parentMobile, setParentMobile] = useState("");
+  const [academicYearId, setAcademicYearId] = useState(academicYears[0]?.id ?? "");
+  const [classId, setClassId] = useState(classes[0]?.id ?? "");
+  const [expiryDays, setExpiryDays] = useState("7");
+  const [latest, setLatest] = useState<{ url: string; mobile: string; expiresAt: string } | null>(null);
+
+  const whatsappUrl = useMemo(() => {
+    if (!latest) return "";
+    const text = `Learning Is Fun enrollment form: ${latest.url}`;
+    return `https://wa.me/91${latest.mobile}?text=${encodeURIComponent(text)}`;
+  }, [latest]);
+
+  function createLink() {
+    startTransition(async () => {
+      const result = await createEnrollmentLinkAction({ parentMobile, academicYearId, classId, expiryDays });
+      if (result.status === "error") {
+        toast.add({ title: "Unable to create link", description: result.message, type: "error" });
+        return;
+      }
+      setLatest({ url: result.url, mobile: parentMobile, expiresAt: result.expiresAt });
+      toast.add({ title: "Enrollment link created", description: "Send it only to the registered WhatsApp number.", type: "success" });
+    });
+  }
+
+  return <div className="space-y-6"><Toaster />
+    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Link2 className="size-5" />Create Parent Enrollment Link</CardTitle></CardHeader><CardContent className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-4">
+        <label className="space-y-2 text-sm font-medium">Parent WhatsApp Number<Input inputMode="numeric" maxLength={10} value={parentMobile} onChange={(e)=>setParentMobile(e.target.value.replace(/\D/g,"").slice(0,10))} placeholder="10-digit mobile" /></label>
+        <label className="space-y-2 text-sm font-medium">Academic Year<select className={selectClass} value={academicYearId} onChange={(e)=>setAcademicYearId(e.target.value)}>{academicYears.map((x)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <label className="space-y-2 text-sm font-medium">Class<select className={selectClass} value={classId} onChange={(e)=>setClassId(e.target.value)}>{classes.map((x)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <label className="space-y-2 text-sm font-medium">Link Validity<select className={selectClass} value={expiryDays} onChange={(e)=>setExpiryDays(e.target.value)}><option value="3">3 days</option><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option></select></label>
+      </div>
+      <Button onClick={createLink} disabled={isPending || parentMobile.length !== 10 || !academicYearId || !classId}><Plus />{isPending ? "Creating…" : "Create Link"}</Button>
+      {latest ? <div className="rounded-2xl border bg-muted/30 p-4"><p className="text-sm font-medium">New secure link</p><p className="mt-1 break-all text-sm text-muted-foreground">{latest.url}</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="outline" onClick={async()=>{await navigator.clipboard.writeText(latest.url);toast.add({title:"Copied",description:"Enrollment link copied.",type:"success"});}}><Copy />Copy Link</Button><Button onClick={()=>window.open(whatsappUrl,"_blank","noopener,noreferrer")}><MessageCircle />Send in WhatsApp</Button><Button variant="outline" onClick={()=>window.open(latest.url,"_blank","noopener,noreferrer")}><ExternalLink />Preview Form</Button></div></div> : null}
+    </CardContent></Card>
+
+    <Card><CardHeader><CardTitle>Enrollment Link History</CardTitle></CardHeader><CardContent><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Created</TableHead><TableHead>WhatsApp</TableHead><TableHead>Academic Year</TableHead><TableHead>Class</TableHead><TableHead>Status</TableHead><TableHead>Student</TableHead><TableHead>Expires</TableHead></TableRow></TableHeader><TableBody>{invites.map((invite)=><TableRow key={String(invite.id)}><TableCell>{new Date(String(invite.created_at)).toLocaleDateString("en-IN")}</TableCell><TableCell>{String(invite.parent_mobile)}</TableCell><TableCell>{oneName(invite.year,"name")}</TableCell><TableCell>{oneName(invite.class,"class_name")}</TableCell><TableCell>{String(invite.status)}</TableCell><TableCell>{oneName(invite.student,"admission_no") || "—"}</TableCell><TableCell>{new Date(String(invite.expires_at)).toLocaleDateString("en-IN")}</TableCell></TableRow>)}</TableBody></Table></div>{invites.length===0?<p className="py-8 text-center text-sm text-muted-foreground">No parent enrollment links have been created.</p>:null}</CardContent></Card>
+  </div>;
+}

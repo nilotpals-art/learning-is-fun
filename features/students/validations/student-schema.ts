@@ -18,6 +18,7 @@ const normalizedEmail = z
   .trim()
   .email("Enter a valid email address.")
   .transform(normalizeEmail);
+const mobile = (label: string) => requiredText(label).regex(/^[6-9][0-9]{9}$/, `${label} must be a valid 10-digit mobile number.`);
 const dateText = requiredText("Date").refine(
   (value) => !Number.isNaN(Date.parse(`${value}T00:00:00`)),
   "Enter a valid date."
@@ -31,12 +32,12 @@ export const studentCreateSchema = z.object({
     "Date of Birth cannot be in the future."
   ),
   gender: z.enum(STUDENT_GENDERS),
-  mobile: requiredText("Student Mobile"),
+  mobile: mobile("Student Mobile"),
   email: normalizedEmail,
   address: optionalUpperText,
   parentName: requiredUpperText("Father / Guardian Name"),
   relationship: z.enum(PARENT_RELATIONSHIPS),
-  parentMobile: requiredText("Parent Mobile"),
+  parentMobile: mobile("Parent Mobile"),
   parentEmail: normalizedEmail,
   academicYearId: z.string().uuid("Select an Academic Year."),
   classId: z.string().uuid("Select a Class."),
@@ -56,8 +57,13 @@ export const studentEditSchema = z.object({
     "Date of Birth cannot be in the future."
   ),
   gender: z.enum(STUDENT_GENDERS),
-  mobile: requiredText("Student Mobile"),
+  mobile: mobile("Student Mobile"),
+  email: normalizedEmail,
   address: optionalUpperText,
+  parentName: requiredUpperText("Father / Guardian Name"),
+  relationship: z.enum(PARENT_RELATIONSHIPS),
+  parentMobile: mobile("Parent Mobile"),
+  parentEmail: normalizedEmail,
   admissionDate: dateText,
   status: z.enum(STUDENT_STATUSES),
   comments: optionalUpperText,
