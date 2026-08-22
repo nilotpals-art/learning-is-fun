@@ -24,7 +24,6 @@ function refreshPlanner() {
 function messageFor(error: unknown): string {
   const message = error && typeof error === "object" && "message" in error ? String(error.message) : "";
   if (message.includes("PLANNER_EVENT_PAST")) return "Past events cannot be deleted from the Calendar. Delete them from History instead.";
-  if (message.includes("PLANNER_EVENT_HAS_EXAM_RESULTS")) return "This event has an Exam Result Set. Remove the exam result first, then delete the event.";
   if (message.includes("PLANNER_EVENT_NOT_FOUND")) return "The Schedule Event was not found.";
   if (message.includes("PLANNER_DELETE_UNAUTHORIZED")) return "You are not authorised to delete Planner records.";
   return "The Schedule Event could not be deleted.";
@@ -41,8 +40,8 @@ export async function deleteForthcomingPlannerEventAction(eventId: string): Prom
   return {
     status: "success",
     message: result?.restoredRecurringClass
-      ? "Event deleted everywhere. The normal recurring class has been restored."
-      : "Event deleted everywhere.",
+      ? "Event and all linked records deleted. The normal recurring class has been restored."
+      : "Event and all linked records deleted.",
   };
 }
 
@@ -57,7 +56,7 @@ export async function deletePlannerEventFromHistoryAction(eventId: string): Prom
   return {
     status: "success",
     message: result?.restoredRecurringClass
-      ? "Event deleted everywhere. The normal recurring class has been restored."
-      : "Event deleted everywhere.",
+      ? "Event and all linked records deleted. The normal recurring class has been restored."
+      : "Event and all linked records deleted.",
   };
 }
