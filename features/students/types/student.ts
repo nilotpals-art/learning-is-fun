@@ -13,6 +13,7 @@ export interface StudentRecord {
   gender: string;
   mobile: string;
   email: string;
+  schoolName: string | null;
   address: string | null;
   admissionDate: string;
   status: StudentStatus;
