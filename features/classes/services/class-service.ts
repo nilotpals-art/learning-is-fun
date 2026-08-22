@@ -117,3 +117,20 @@ export async function updateAcademicClassRecord(
   if (error) throw error;
   return Boolean(data);
 }
+
+export async function deleteAcademicClassRecord(
+  instituteId: string,
+  id: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("academic_classes")
+    .delete()
+    .eq("institute_id", instituteId)
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
+}
