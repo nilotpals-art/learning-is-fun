@@ -24,7 +24,12 @@ export const parentResponseSchema = z.object({
   expectedJoiningDate: dateSchema.nullish(),
   selectedBatchId: z.string().uuid("Select a valid Batch.").nullish(),
   notes: z.string().trim().max(500, "Notes must not exceed 500 characters.").nullish(),
-});
+}).transform((value) => ({
+  ...value,
+  // Joining timing is institute-controlled. Never trust or retain a value supplied by the parent client.
+  joiningType: value.parentResponse === "continuing" ? ("normal" as const) : null,
+  expectedJoiningDate: null,
+}));
 
 export const confirmRolloverSchema = z.object({
   requestId: z.string().uuid("Invalid Rollover Request."),
