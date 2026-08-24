@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarOff, CheckCircle2, Plus } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Toaster, toast } from "@/components/ui/toast";
+import { groupBatchesByWeekdays } from "@/features/batches/utils/weekday-groups";
 import { cancelEnrollmentBreak, completeEnrollmentBreak, createEnrollmentBreak } from "@/features/rollover/actions/rollover-actions";
 import { BREAK_FEE_TREATMENT_LABELS, type AdminEnrollmentBreak } from "@/features/rollover/types/rollover";
 import { createBreakSchema, type CreateBreakValues } from "@/features/rollover/validations/rollover-schema";
@@ -35,7 +36,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 interface BreakOptions {
   students: Array<{ id: string; label: string }>;
   academicYears: Array<{ id: string; label: string }>;
-  batches: Array<{ id: string; label: string }>;
+  batches: Array<{ id: string; label: string; weekdays: number[] }>;
 }
 
 export function EnrollmentBreaksManager({ breaks, options }: { breaks: AdminEnrollmentBreak[]; options: BreakOptions }) {
@@ -43,6 +44,7 @@ export function EnrollmentBreaksManager({ breaks, options }: { breaks: AdminEnro
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [completing, setCompleting] = useState<AdminEnrollmentBreak | null>(null);
+  const batchGroups = useMemo(() => groupBatchesByWeekdays(options.batches), [options.batches]);
   const form = useForm<CreateBreakValues>({ resolver: zodResolver(createBreakSchema), defaultValues: { studentId: "", academicYearId: "", batchId: "", breakFrom: "", breakTo: "", reason: "", feeTreatment: "normal", feeTreatmentNotes: "" } });
   const completeForm = useForm<{ actualResumptionDate: string }>({ defaultValues: { actualResumptionDate: "" } });
 
@@ -65,7 +67,7 @@ export function EnrollmentBreaksManager({ breaks, options }: { breaks: AdminEnro
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle>Create Enrollment Break</DialogTitle><DialogDescription>Record a scheduled absence for a student.</DialogDescription></DialogHeader><form id="break-form" className="grid gap-4 sm:grid-cols-2" noValidate onSubmit={form.handleSubmit((values) => run(createEnrollmentBreak(values), setOpen))}>
       <div className="space-y-2 sm:col-span-2"><label className="text-sm font-semibold">Student</label><select className={controlClass} disabled={pending} {...form.register("studentId")}><option value="">Select Student</option>{options.students.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>{form.formState.errors.studentId?.message ? <p className="text-sm text-destructive">{form.formState.errors.studentId.message}</p> : null}</div>
       <Field label="Academic Year" error={form.formState.errors.academicYearId?.message}><select className={controlClass} disabled={pending} {...form.register("academicYearId")}><option value="">Select Academic Year</option>{options.academicYears.map((y) => <option key={y.id} value={y.id}>{y.label}</option>)}</select></Field>
-      <Field label="Batch" error={form.formState.errors.batchId?.message}><select className={controlClass} disabled={pending} {...form.register("batchId")}><option value="">Select Batch</option>{options.batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</select></Field>
+      <Field label="Batch" error={form.formState.errors.batchId?.message}><select className={controlClass} disabled={pending} {...form.register("batchId")}><option value="">Select Batch</option>{batchGroups.map((group) => <optgroup key={group.key} label={group.label}>{group.items.map((batch) => <option key={batch.id} value={batch.id}>{batch.label}</option>)}</optgroup>)}</select></Field>
       <Field label="Break From" error={form.formState.errors.breakFrom?.message}><Input type="date" className={inputClass} disabled={pending} {...form.register("breakFrom")} /></Field>
       <Field label="Break To" error={form.formState.errors.breakTo?.message}><Input type="date" className={inputClass} disabled={pending} {...form.register("breakTo")} /></Field>
       <Field label="Fee Treatment" error={form.formState.errors.feeTreatment?.message}><select className={controlClass} disabled={pending} {...form.register("feeTreatment")}>{Object.entries(BREAK_FEE_TREATMENT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
