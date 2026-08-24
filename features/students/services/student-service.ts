@@ -190,3 +190,10 @@ export async function updateParentRecord(instituteId: string, parentId: string, 
   if (relationshipError) throw relationshipError;
   return true;
 }
+
+export async function deleteStudentRecord(instituteId: string, id: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("students").delete().eq("institute_id", instituteId).eq("id", id).select("id").maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
