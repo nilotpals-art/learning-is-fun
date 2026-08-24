@@ -10,15 +10,35 @@ function check(error: { message: string } | null): void { if (error) throw error
 
 export async function getFeeReferenceData(profile: AuthProfile) {
   const instituteId = scope(profile); const supabase = await createClient();
-  const [students, years, heads, modes] = await Promise.all([
-    supabase.from("students").select("id,name,admission_no").eq("institute_id", instituteId).eq("status", "Active").order("name"),
+  const [students, years, heads, modes, dues, depositEntries] = await Promise.all([
+    supabase.from("students").select("id,name,admission_no,status").eq("institute_id", instituteId).in("status", ["Active", "Left"]).order("name"),
     supabase.from("academic_years").select("id,name").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }),
     supabase.from("fee_heads").select("id,name").eq("institute_id", instituteId).eq("is_active", true).order("display_order"),
     supabase.from("payment_modes").select("id,name").eq("institute_id", instituteId).eq("is_active", true).order("display_order"),
+    supabase.from("student_fee_dues").select("student_id,net_amount,allocations:fee_payment_allocations!fee_payment_allocations_due_fkey(amount,payment:fee_payments!fee_payment_allocations_payment_fkey(status)),deposit_adjustments:student_security_deposit_entries!student_security_deposit_entries_target_due_id_fkey(amount,entry_type)").eq("institute_id", instituteId),
+    supabase.from("student_security_deposit_entries").select("student_id,entry_type,amount").eq("institute_id", instituteId),
   ]);
-  check(students.error ?? years.error ?? heads.error ?? modes.error);
+  check(students.error ?? years.error ?? heads.error ?? modes.error ?? dues.error ?? depositEntries.error);
+
+  const unsettled = new Set<string>();
+  for (const due of dues.data ?? []) {
+    const paid = (due.allocations ?? []).reduce((sum, allocation) => sum + (one(allocation.payment)?.status === "posted" ? Number(allocation.amount) : 0), 0);
+    const adjusted = (due.deposit_adjustments ?? []).reduce((sum, entry) => sum + (entry.entry_type === "adjustment" ? Number(entry.amount) : 0), 0);
+    if (Number(due.net_amount) - paid - adjusted > 0.005) unsettled.add(due.student_id);
+  }
+  const depositBalance = new Map<string, number>();
+  for (const entry of depositEntries.data ?? []) {
+    const current = depositBalance.get(entry.student_id) ?? 0;
+    depositBalance.set(entry.student_id, current + (entry.entry_type === "credit" ? Number(entry.amount) : -Number(entry.amount)));
+  }
+  for (const [studentId, balance] of depositBalance) if (balance > 0.005) unsettled.add(studentId);
+
+  const feeStudents = (students.data ?? [])
+    .filter((student) => student.status === "Active" || unsettled.has(student.id))
+    .map((x) => ({ id: x.id, name: x.name, admissionNo: x.admission_no })) as FeeStudent[];
+
   return {
-    students: (students.data ?? []).map((x) => ({ id: x.id, name: x.name, admissionNo: x.admission_no })) as FeeStudent[],
+    students: feeStudents,
     academicYears: (years.data ?? []) as FeeOption[], feeHeads: (heads.data ?? []) as FeeOption[], paymentModes: (modes.data ?? []) as FeeOption[],
   };
 }
