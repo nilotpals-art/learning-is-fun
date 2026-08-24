@@ -28,23 +28,35 @@ export function groupBatchesByWeekdays<T extends { weekdays?: number[] | null }>
 
   for (const item of items) {
     const weekdays = normalizeWeekdays(item.weekdays);
-    const key = weekdays.length ? weekdays.join("-") : "unscheduled";
-    const current = groups.get(key) ?? {
-      key,
-      label: weekdayGroupLabel(weekdays),
-      weekdays,
-      items: [],
-    };
-    current.items.push(item);
-    groups.set(key, current);
+
+    if (!weekdays.length) {
+      const current = groups.get("unscheduled") ?? {
+        key: "unscheduled",
+        label: "Schedule not assigned",
+        weekdays: [],
+        items: [],
+      };
+      current.items.push(item);
+      groups.set("unscheduled", current);
+      continue;
+    }
+
+    for (const day of weekdays) {
+      const key = String(day);
+      const current = groups.get(key) ?? {
+        key,
+        label: WEEKDAY_NAMES[day - 1],
+        weekdays: [day],
+        items: [],
+      };
+      current.items.push(item);
+      groups.set(key, current);
+    }
   }
 
   return [...groups.values()].sort((a, b) => {
     if (!a.weekdays.length) return 1;
     if (!b.weekdays.length) return -1;
-    const firstDay = a.weekdays[0] - b.weekdays[0];
-    if (firstDay !== 0) return firstDay;
-    if (a.weekdays.length !== b.weekdays.length) return a.weekdays.length - b.weekdays.length;
-    return a.key.localeCompare(b.key);
+    return a.weekdays[0] - b.weekdays[0];
   });
 }
