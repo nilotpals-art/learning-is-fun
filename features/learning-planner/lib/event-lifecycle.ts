@@ -9,7 +9,7 @@ export interface LifecycleMenuItem {
 export const labels: Record<ScheduleType, string> = {
   regular_class: "Regular Class",
   extra_class: "Extra Class",
-  mock_test: "Mock Test",
+  mock_test: "Review Test",
   exam: "Exam",
   parent_meeting: "Parent Meeting",
   holiday: "Holiday",
