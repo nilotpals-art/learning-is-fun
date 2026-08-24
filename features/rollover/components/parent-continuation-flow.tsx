@@ -1,13 +1,14 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, GraduationCap, Lock, ShieldAlert } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Toaster, toast } from "@/components/ui/toast";
+import { groupBatchesByWeekdays } from "@/features/batches/utils/weekday-groups";
 import { confirmParentRollover, saveParentRolloverResponse } from "@/features/rollover/actions/rollover-actions";
 import { ROLLOVER_RESPONSE_LABELS, type RolloverBatchOption, type RolloverRequestDetail } from "@/features/rollover/types/rollover";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function ParentContinuationFlow({ detail, batches }: {
   const [notes, setNotes] = useState(detail.parentNotes ?? "");
   const [message, setMessage] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const batchGroups = useMemo(() => groupBatchesByWeekdays(batches.map((batch) => ({ ...batch, weekdays: batch.weekdays }))), [batches]);
 
   if (detail.isLocked || ["completed", "cancelled", "rejected"].includes(detail.adminStatus)) {
     const blocked = ["completed", "cancelled", "rejected"].includes(detail.adminStatus);
@@ -108,8 +110,8 @@ export function ParentContinuationFlow({ detail, batches }: {
       <div className="flex justify-end"><Button onClick={() => { if (response === "continuing") { setStep("batch"); } else { saveSimple(response); } }} disabled={pending}><ArrowRight />Continue</Button></div>
     </fieldset> : null}
 
-    {step === "batch" ? <div className="space-y-3"><h3 className="text-sm font-semibold">Choose the preferred batch</h3>
-      {batches.length === 0 ? <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">No batches are available yet for {detail.proposedClassName} in {detail.targetYearName}. Your selection will be saved; the institute may finalize it later.</p> : <div className="grid gap-3">{batches.map((batch) => { const full = batch.available != null && batch.available < 1; const isSelected = selectedBatchId === batch.batchId; return <button key={batch.batchId} type="button" disabled={full && !isSelected} onClick={() => setSelectedBatchId(batch.batchId)} className={cn("flex items-center justify-between gap-4 rounded-2xl border bg-card p-4 text-left transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 disabled:opacity-50", isSelected ? selectedClass : "hover:bg-muted")}><div><p className="font-bold">{batch.batchName}</p><p className="text-xs text-muted-foreground">{batch.branchName ?? "Main branch"}{batch.subjectName ? ` · ${batch.subjectName}` : ""}</p></div><div className="text-right"><Badge variant={full ? "destructive" : isSelected ? "default" : "secondary"}>{batch.available == null ? "Unlimited seats" : full ? "Full" : `${batch.available} seat${batch.available === 1 ? "" : "s"} left`}</Badge>{isSelected ? <p className="mt-1 text-xs font-semibold text-emerald-600">Selected ✓</p> : null}</div></button>; })}</div>}
+    {step === "batch" ? <div className="space-y-4"><h3 className="text-sm font-semibold">Choose the preferred batch</h3>
+      {batches.length === 0 ? <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">No batches are available yet for {detail.proposedClassName} in {detail.targetYearName}. Your selection will be saved; the institute may finalize it later.</p> : <div className="space-y-5">{batchGroups.map((group) => <section key={group.key} className="space-y-2"><div className="flex items-center gap-2"><CalendarClock className="size-4 text-muted-foreground"/><h4 className="text-sm font-bold tracking-wide">{group.label}</h4><Badge variant="outline">{group.items.length}</Badge></div><div className="grid gap-3">{group.items.map((batch) => { const full = batch.available != null && batch.available < 1; const isSelected = selectedBatchId === batch.batchId; return <button key={batch.batchId} type="button" disabled={full && !isSelected} onClick={() => setSelectedBatchId(batch.batchId)} className={cn("flex items-center justify-between gap-4 rounded-2xl border bg-card p-4 text-left transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 disabled:opacity-50", isSelected ? selectedClass : "hover:bg-muted")}><div><p className="font-bold">{batch.batchName}</p><p className="text-xs text-muted-foreground">{batch.branchName ?? "Main branch"}{batch.subjectName ? ` · ${batch.subjectName}` : ""}</p></div><div className="text-right"><Badge variant={full ? "destructive" : isSelected ? "default" : "secondary"}>{batch.available == null ? "Unlimited seats" : full ? "Full" : `${batch.available} seat${batch.available === 1 ? "" : "s"} left`}</Badge>{isSelected ? <p className="mt-1 text-xs font-semibold text-emerald-600">Selected ✓</p> : null}</div></button>; })}</div></section>)}</div>}
       <div className="flex justify-between"><Button variant="outline" onClick={() => setStep("response")} disabled={pending}><ArrowLeft />Back</Button><Button onClick={() => setStep("review")} disabled={pending}><ArrowRight />Review</Button></div>
     </div> : null}
 
