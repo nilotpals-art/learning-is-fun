@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { CalendarEventManager } from "@/features/learning-planner/components/calendar-event-manager";
+import { EventManager } from "@/features/learning-planner/components/event-manager";
 import { PlannerShell } from "@/features/learning-planner/components/planner-shell";
 import { listScheduleEvents } from "@/features/learning-planner/services/event-service";
 import { listPlannerOptions } from "@/features/learning-planner/services/schedule-service";
@@ -31,9 +31,9 @@ export default async function EventsPage() {
   return (
     <PlannerShell
       title="Schedule Events"
-      description="Forthcoming dated events only. Past events are hidden; persisted events can only be deleted from this page."
+      description="Create and manage exams, review tests, parent meetings, extra classes, holidays and other dated planner events."
     >
-      <CalendarEventManager events={events} options={options} />
+      <EventManager events={events} options={options} />
     </PlannerShell>
   );
 }
