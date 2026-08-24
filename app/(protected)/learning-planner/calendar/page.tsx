@@ -6,11 +6,30 @@ import { listPlannerOptions } from "@/features/learning-planner/services/schedul
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 
+function dateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 export default async function CalendarPage() {
   const profile = await requireRole(DASHBOARD_ROLES);
   if (!profile.instituteId) redirect("/unauthorized");
-  const today = new Date().toISOString().slice(0, 10);
-  const toDate = `${new Date().getFullYear()}-12-31`;
-  const [events, options] = await Promise.all([listCalendarReadModel(profile, today, toDate), listPlannerOptions(profile)]);
-  return <PlannerShell title="Academic Calendar" description="Forthcoming class changes, tests, exams, and meetings only. Past events are hidden from Calendar and remain available in History."><CalendarEventManager events={events} options={options} /></PlannerShell>;
+
+  const now = new Date();
+  const day = now.getUTCDay();
+  const weekStart = new Date(now);
+  weekStart.setUTCDate(now.getUTCDate() - (day === 0 ? 6 : day - 1));
+  const rangeEnd = new Date(weekStart);
+  rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 370);
+
+  const [events, options] = await Promise.all([
+    listCalendarReadModel(profile, dateKey(weekStart), dateKey(rangeEnd)),
+    listPlannerOptions(profile),
+  ]);
+
+  return <PlannerShell
+    title="Weekly Academic Calendar"
+    description="Weekly timetable of regular classes and planner events. Exams, mock tests, reschedules, cancellations, meetings and other changes appear directly against the relevant day."
+  >
+    <CalendarEventManager events={events} options={options} />
+  </PlannerShell>;
 }
