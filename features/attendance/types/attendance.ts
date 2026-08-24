@@ -6,6 +6,10 @@ export interface AttendanceOption {
   label: string;
 }
 
+export interface AttendanceBatchOption extends AttendanceOption {
+  weekdays: number[];
+}
+
 export interface AcademicYearAttendanceOption extends AttendanceOption {
   startDate: string;
   endDate: string;
@@ -13,7 +17,7 @@ export interface AcademicYearAttendanceOption extends AttendanceOption {
 
 export interface AttendanceOptions {
   academicYears: AcademicYearAttendanceOption[];
-  batches: AttendanceOption[];
+  batches: AttendanceBatchOption[];
 }
 
 export interface AttendanceRosterEntry {
