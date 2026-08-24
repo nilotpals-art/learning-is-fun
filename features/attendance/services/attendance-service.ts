@@ -20,6 +20,11 @@ interface AttendanceRow {
   updated_at: string;
   marked_by_profile: ProfileRelation | ProfileRelation[] | null;
 }
+interface AttendanceBatchRow {
+  id: string;
+  name: string;
+  schedules: Array<{ day_of_week: number; is_active: boolean }> | null;
+}
 
 function one<T>(value: T | T[]): T { return Array.isArray(value) ? value[0] : value; }
 function optionalOne<T>(value: T | T[] | null): T | null {
@@ -31,13 +36,17 @@ export async function listAttendanceOptions(instituteId: string): Promise<Attend
   const supabase = await createClient();
   const [years, batches] = await Promise.all([
     supabase.from("academic_years").select("id, name, start_date, end_date").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }),
-    supabase.from("batches").select("id, name").eq("institute_id", instituteId).eq("is_active", true).order("name"),
+    supabase.from("batches").select("id, name, schedules:class_schedules!class_schedules_batch_fkey(day_of_week,is_active)").eq("institute_id", instituteId).eq("is_active", true).order("name"),
   ]);
   const error = years.error ?? batches.error;
   if (error) throw error;
   return {
     academicYears: (years.data ?? []).map((year) => ({ id: year.id, label: year.name, startDate: year.start_date, endDate: year.end_date })),
-    batches: (batches.data ?? []).map((batch) => ({ id: batch.id, label: batch.name })),
+    batches: ((batches.data ?? []) as unknown as AttendanceBatchRow[]).map((batch) => ({
+      id: batch.id,
+      label: batch.name,
+      weekdays: [...new Set((batch.schedules ?? []).filter((schedule) => schedule.is_active).map((schedule) => schedule.day_of_week))].sort((a, b) => a - b),
+    })),
   };
 }
 
