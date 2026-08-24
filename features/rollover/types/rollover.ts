@@ -92,6 +92,7 @@ export interface RolloverBatchOption {
   assigned: number;
   reserved: number;
   available: number | null;
+  weekdays: number[];
 }
 
 export interface RolloverRequestDetail {
