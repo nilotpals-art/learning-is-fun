@@ -11,6 +11,7 @@ import { resolveParentByEmail } from "@/features/students/services/parent-resolu
 import {
   compensateAdmissionFoundation,
   createAdmissionFoundation,
+  deleteStudentRecord,
   getIdentityProfileId,
   getStudent,
   listActiveAcademicYears,
@@ -257,5 +258,38 @@ export async function updateStudent(idInput: unknown, input: unknown): Promise<S
       return saveError("The requested email address is already in use.");
     }
     return saveError();
+  }
+}
+
+export async function deleteStudent(idInput: unknown): Promise<StudentActionResult> {
+  const id = studentIdSchema.safeParse(idInput);
+  if (!id.success) return saveError("Invalid Student.");
+
+  const instituteId = await requireInstituteId();
+  try {
+    const current = await getStudent(instituteId, id.data);
+    if (!current) return saveError("Student not found.");
+
+    const studentProfileId = await getIdentityProfileId(instituteId, "students", id.data);
+    const deleted = await deleteStudentRecord(instituteId, id.data);
+    if (!deleted) return saveError("Student not found.");
+
+    if (studentProfileId) {
+      try {
+        await deleteManagedAuthUser(studentProfileId);
+      } catch (authError) {
+        console.error("Student record deleted but managed auth cleanup failed", { studentId: id.data, authError });
+      }
+    }
+
+    revalidatePath(PATH);
+    revalidatePath("/fees/student-fees");
+    return { status: "success", message: `${current.name} was permanently deleted.` };
+  } catch (error) {
+    const databaseError = error as { code?: string; message?: string };
+    if (databaseError.code === "23503") {
+      return saveError("This Student has linked attendance, fees, academic or other history and cannot be deleted. Mark the Student as Left instead.");
+    }
+    return saveError("This Student could not be deleted. If the child joined the institute, mark the Student as Left instead.");
   }
 }
