@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, FileDown, RotateCcw, Trash2 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { deleteForthcomingPlannerEventAction } from "@/features/learning-planner/actions/delete-actions";
-import { CALENDAR_EVENT_TYPES, SCHEDULE_STATUSES, type PlannerOptions, type ScheduleEvent } from "@/features/learning-planner/types/learning-planner";
+import { CALENDAR_EVENT_TYPES, SCHEDULE_STATUSES, type PlannerOptions, type ScheduleEvent, type ScheduleType } from "@/features/learning-planner/types/learning-planner";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
@@ -61,6 +61,11 @@ function displayTime(value: string | null) {
   return `${displayHour}:${minuteText} ${suffix}`;
 }
 
+function scheduleTypeLabel(type: ScheduleType) {
+  if (type === "mock_test") return "Review Test";
+  return type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function eventTone(event: ScheduleEvent) {
   if (event.status === "cancelled") return "border-red-300 bg-red-50 text-red-950 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100";
   if (event.status === "rescheduled") return "border-orange-300 bg-orange-50 text-orange-950 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-100";
@@ -78,7 +83,7 @@ function typeLabel(event: ScheduleEvent) {
   if (event.status === "cancelled") return "No class";
   if (event.status === "rescheduled") return "Rescheduled";
   if (event.isProjected && event.scheduleType === "regular_class") return "Regular class";
-  return event.scheduleType.replaceAll("_", " ");
+  return scheduleTypeLabel(event.scheduleType);
 }
 
 export function CalendarEventManager({ events, options }: { events: ScheduleEvent[]; options: PlannerOptions }) {
@@ -121,9 +126,21 @@ export function CalendarEventManager({ events, options }: { events: ScheduleEven
   const canGoPrevious = weekStartKey > toDateKey(currentWeekStart);
 
   const moveWeek = (amount: number) => setWeekStartKey(toDateKey(addDays(weekStart, amount * 7)));
+  const savePdf = () => window.print();
 
   return <div className="space-y-5">
-    <Card className="overflow-hidden">
+    <style>{`@media print {
+      @page { size: A4 landscape; margin: 8mm; }
+      body * { visibility: hidden !important; }
+      #weekly-calendar-print, #weekly-calendar-print * { visibility: visible !important; }
+      #weekly-calendar-print { position: absolute; inset: 0; width: 100%; }
+      .calendar-screen-only { display: none !important; }
+      .calendar-print-grid { min-width: 0 !important; }
+      .calendar-print-grid article { break-inside: avoid; box-shadow: none !important; }
+      .calendar-print-grid section { min-height: 0 !important; }
+    }`}</style>
+
+    <Card className="overflow-hidden calendar-screen-only">
       <CardContent className="space-y-4 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -134,6 +151,7 @@ export function CalendarEventManager({ events, options }: { events: ScheduleEven
             <Button type="button" variant="outline" size="sm" disabled={!canGoPrevious} onClick={() => moveWeek(-1)}><ChevronLeft />Previous</Button>
             <Button type="button" variant="outline" size="sm" onClick={() => setWeekStartKey(toDateKey(currentWeekStart))}><RotateCcw />This Week</Button>
             <Button type="button" variant="outline" size="sm" onClick={() => moveWeek(1)}>Next<ChevronRight /></Button>
+            <Button type="button" size="sm" onClick={savePdf}><FileDown />Save PDF</Button>
           </div>
         </div>
 
@@ -147,7 +165,7 @@ export function CalendarEventManager({ events, options }: { events: ScheduleEven
           <label className="text-sm font-medium">Event Type
             <select className="mt-1 h-10 w-full rounded-xl border bg-card px-3" value={eventType} onChange={(event) => setEventType(event.target.value)}>
               <option value="">All Types</option>
-              {CALENDAR_EVENT_TYPES.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}
+              {CALENDAR_EVENT_TYPES.map((type) => <option key={type} value={type}>{scheduleTypeLabel(type)}</option>)}
             </select>
           </label>
           <label className="text-sm font-medium">Status
@@ -160,67 +178,75 @@ export function CalendarEventManager({ events, options }: { events: ScheduleEven
       </CardContent>
     </Card>
 
-    {feedback ? <p className="text-sm" role="status">{feedback}</p> : null}
+    {feedback ? <p className="text-sm calendar-screen-only" role="status">{feedback}</p> : null}
 
-    <Card className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <div className="min-w-[1120px]">
-          <div className="grid grid-cols-7 border-b bg-muted/40">
-            {days.map((day, index) => {
-              const dateKey = toDateKey(day);
-              const isToday = dateKey === toDateKey(today);
-              return <div key={dateKey} className={`border-r px-3 py-3 text-center last:border-r-0 ${isToday ? "bg-primary/10" : ""}`}>
-                <div className="text-xs font-bold uppercase tracking-wide">{DAY_NAMES[index]}</div>
-                <div className="mt-1 text-sm font-semibold">{formatDay(day)}</div>
-                {isToday ? <Badge className="mt-2" variant="secondary">Today</Badge> : null}
-              </div>;
-            })}
-          </div>
+    <div id="weekly-calendar-print" className="space-y-3">
+      <div className="hidden print:block text-center">
+        <h1 className="text-xl font-bold">Learning is Fun</h1>
+        <p className="text-sm font-semibold">Academic Session {academicYear} · Week {isoWeekNumber(weekStart)}</p>
+        <p className="text-xs">{formatRange(weekStart, weekEnd)}</p>
+      </div>
 
-          <div className="grid grid-cols-7 items-stretch">
-            {days.map((day) => {
-              const dateKey = toDateKey(day);
-              const dayEvents = eventsByDate.get(dateKey) ?? [];
-              return <section key={dateKey} className="min-h-[420px] border-r p-2 last:border-r-0">
-                <div className="space-y-2">
-                  {dayEvents.map((event) => <article key={`${event.id}-${event.eventDate}`} className={`rounded-xl border p-2.5 shadow-sm ${eventTone(event)}`}>
-                    <div className="flex items-start justify-between gap-1">
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-bold uppercase tracking-wide">{event.batchName ?? event.title}</div>
-                        {event.subjectName ? <div className="mt-0.5 truncate text-xs opacity-75">{event.subjectName}</div> : null}
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[1120px] calendar-print-grid">
+            <div className="grid grid-cols-7 border-b bg-muted/40">
+              {days.map((day, index) => {
+                const dateKey = toDateKey(day);
+                const isToday = dateKey === toDateKey(today);
+                return <div key={dateKey} className={`border-r px-3 py-3 text-center last:border-r-0 ${isToday ? "bg-primary/10" : ""}`}>
+                  <div className="text-xs font-bold uppercase tracking-wide">{DAY_NAMES[index]}</div>
+                  <div className="mt-1 text-sm font-semibold">{formatDay(day)}</div>
+                  {isToday ? <Badge className="mt-2 calendar-screen-only" variant="secondary">Today</Badge> : null}
+                </div>;
+              })}
+            </div>
+
+            <div className="grid grid-cols-7 items-stretch">
+              {days.map((day) => {
+                const dateKey = toDateKey(day);
+                const dayEvents = eventsByDate.get(dateKey) ?? [];
+                return <section key={dateKey} className="min-h-[420px] border-r p-2 last:border-r-0">
+                  <div className="space-y-2">
+                    {dayEvents.map((event) => <article key={`${event.id}-${event.eventDate}`} className={`rounded-xl border p-2.5 shadow-sm ${eventTone(event)}`}>
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-bold uppercase tracking-wide">{event.batchName ?? event.title}</div>
+                          {event.subjectName ? <div className="mt-0.5 truncate text-xs opacity-75">{event.subjectName}</div> : null}
+                        </div>
+                        {!event.isProjected ? <Button type="button" variant="ghost" size="icon-sm" className="size-6 shrink-0 calendar-screen-only" aria-label={`Delete ${event.title}`} disabled={pending} onClick={() => {
+                          if (!window.confirm(`Delete ${event.title} everywhere?`)) return;
+                          setPendingId(event.id);
+                          start(async () => {
+                            const result = await deleteForthcomingPlannerEventAction(event.id);
+                            setFeedback(result.message);
+                            setPendingId(null);
+                            if (result.status === "success") router.refresh();
+                          });
+                        }}><Trash2 className="size-3.5" /></Button> : null}
                       </div>
-                      {!event.isProjected ? <Button type="button" variant="ghost" size="icon-sm" className="size-6 shrink-0" aria-label={`Delete ${event.title}`} disabled={pending} onClick={() => {
-                        if (!window.confirm(`Delete ${event.title} everywhere?`)) return;
-                        setPendingId(event.id);
-                        start(async () => {
-                          const result = await deleteForthcomingPlannerEventAction(event.id);
-                          setFeedback(result.message);
-                          setPendingId(null);
-                          if (result.status === "success") router.refresh();
-                        });
-                      }}><Trash2 className="size-3.5" /></Button> : null}
-                    </div>
-                    {event.startTime ? <div className="mt-2 text-sm font-bold">{displayTime(event.startTime)}{event.endTime ? ` – ${displayTime(event.endTime)}` : ""}</div> : null}
-                    <div className="mt-1 text-xs capitalize">{typeLabel(event)}{pendingId === event.id ? " · deleting…" : ""}</div>
-                    {event.title && event.title !== event.batchName ? <div className="mt-1 text-xs font-medium">{event.title}</div> : null}
-                    {event.room ? <div className="mt-1 text-[11px] opacity-70">Room: {event.room}</div> : null}
-                  </article>)}
-                  {dayEvents.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed p-3 text-center text-xs text-muted-foreground">No classes or events</div> : null}
-                </div>
-              </section>;
-            })}
+                      {event.startTime ? <div className="mt-2 text-sm font-bold">{displayTime(event.startTime)}{event.endTime ? ` – ${displayTime(event.endTime)}` : ""}</div> : null}
+                      <div className="mt-1 text-xs capitalize">{typeLabel(event)}{pendingId === event.id ? " · deleting…" : ""}</div>
+                      {event.title && event.title !== event.batchName ? <div className="mt-1 text-xs font-medium">{event.title}</div> : null}
+                      {event.room ? <div className="mt-1 text-[11px] opacity-70">Room: {event.room}</div> : null}
+                    </article>)}
+                    {dayEvents.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed p-3 text-center text-xs text-muted-foreground">No classes or events</div> : null}
+                  </div>
+                </section>;
+              })}
+            </div>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
 
-    <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-      <span><span className="font-semibold text-blue-700 dark:text-blue-300">■</span> Regular class</span>
-      <span><span className="font-semibold text-rose-700 dark:text-rose-300">■</span> Exam</span>
-      <span><span className="font-semibold text-amber-700 dark:text-amber-300">■</span> Mock test</span>
-      <span><span className="font-semibold text-orange-700 dark:text-orange-300">■</span> Rescheduled</span>
-      <span><span className="font-semibold text-red-700 dark:text-red-300">■</span> No class / Cancelled</span>
-      <span><span className="font-semibold text-teal-700 dark:text-teal-300">■</span> Parent meeting</span>
+      <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+        <span><span className="font-semibold text-blue-700 dark:text-blue-300">■</span> Regular class</span>
+        <span><span className="font-semibold text-rose-700 dark:text-rose-300">■</span> Exam</span>
+        <span><span className="font-semibold text-amber-700 dark:text-amber-300">■</span> Review Test</span>
+        <span><span className="font-semibold text-orange-700 dark:text-orange-300">■</span> Rescheduled</span>
+        <span><span className="font-semibold text-red-700 dark:text-red-300">■</span> No class / Cancelled</span>
+        <span><span className="font-semibold text-teal-700 dark:text-teal-300">■</span> Parent meeting</span>
+      </div>
     </div>
   </div>;
 }
