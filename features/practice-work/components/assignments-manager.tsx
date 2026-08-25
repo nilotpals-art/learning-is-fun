@@ -10,7 +10,7 @@ import{assignUploadedQuestionFileAction}from"@/features/practice-work/actions/up
 import type{PracticeAssignment,PracticeOptions,PracticeSet}from"@/features/practice-work/types/practice-work";
 import type{UploadedQuestionFile,UploadedQuestionFileAssignment}from"@/features/practice-work/services/uploaded-question-file-service";
 
-export function AssignmentsManager({sets,assignments,options,uploadedFiles,fileAssignments}:{sets:PracticeSet[];assignments:PracticeAssignment[];options:PracticeOptions;uploadedFiles:UploadedQuestionFile[];fileAssignments:UploadedQuestionFileAssignment[]}){
+export function AssignmentsManager({sets,assignments,options,uploadedFiles=[],fileAssignments=[]}:{sets:PracticeSet[];assignments:PracticeAssignment[];options:PracticeOptions;uploadedFiles?:UploadedQuestionFile[];fileAssignments?:UploadedQuestionFileAssignment[]}){
   const[pending,start]=useTransition(),router=useRouter(),[message,setMessage]=useState("");
   const finish=(r:{status:string;message:string})=>{setMessage(r.message);if(r.status==="success")router.refresh()};
   return <div className="space-y-6">
