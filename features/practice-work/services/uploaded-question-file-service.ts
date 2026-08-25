@@ -45,6 +45,21 @@ export async function assignUploadedQuestionFile(profile:AuthProfile,input:{sour
   return{assignedCount:studentIds.length};
 }
 
+export async function deleteUploadedQuestionFile(profile:AuthProfile,sourceFileId:string){
+  const instituteId=institute(profile),s=await createClient();
+  const{data:file,error:fileError}=await s.from("practice_question_source_files").select("id,storage_path").eq("id",sourceFileId).eq("institute_id",instituteId).eq("status","ready").maybeSingle();
+  if(fileError||!file)throw new Error("PRACTICE_FILE_NOT_FOUND");
+  const{count,error:countError}=await s.from("practice_file_assignments").select("id",{count:"exact",head:true}).eq("institute_id",instituteId).eq("source_file_id",sourceFileId);
+  if(countError)throw countError;
+  const{error:assignmentError}=await s.from("practice_file_assignments").delete().eq("institute_id",instituteId).eq("source_file_id",sourceFileId);
+  if(assignmentError)throw assignmentError;
+  const{error:sourceError}=await s.from("practice_question_source_files").delete().eq("id",sourceFileId).eq("institute_id",instituteId);
+  if(sourceError)throw sourceError;
+  const storageResult=await s.storage.from("practice-work-private").remove([file.storage_path]);
+  if(storageResult.error)console.error("Deleted uploaded question file record but storage cleanup failed",{sourceFileId,code:storageResult.error.name});
+  return{removedAssignments:count??0};
+}
+
 export async function listUploadedQuestionFileAssignments(profile:AuthProfile):Promise<UploadedQuestionFileAssignment[]>{
   const s=await createClient();
   const{data,error}=await s.from("practice_file_assignments").select("id,source_file_id,student_id,available_from,due_at,status,created_at,file:practice_question_source_files(display_title,original_filename,mime_type),student:students(name)").eq("institute_id",institute(profile)).order("created_at",{ascending:false});
