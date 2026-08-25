@@ -2,7 +2,7 @@ export type FeeActionResult<T = undefined> =
   | { status: "success"; message: string; data?: T }
   | { status: "error"; message: string; fieldErrors?: Record<string, string[]> };
 
-export interface FeeOption { id: string; name: string }
+export interface FeeOption { id: string; name: string; isCurrent?: boolean }
 export interface FeeStudent extends FeeOption { admissionNo: string | null }
 
 export interface FeeDue {
