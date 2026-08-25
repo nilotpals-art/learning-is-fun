@@ -2,22 +2,56 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { AuthProfile } from "@/features/auth/types/auth";
-import { extractQuestionsWithMetadata, type ExtractedDraftQuestion } from "@/features/practice-work/services/document-extraction-service";
 import { validateQuestionImportBytes, validateQuestionImportMetadata } from "@/features/practice-work/services/question-import-file";
-import { normalizeQuestionText } from "@/features/practice-work/services/practice-work-service";
 import { createClient } from "@/lib/supabase/server";
 
-export class QuestionImportError extends Error { constructor(message:string,readonly generationId:string){super(message)} }
-export async function authorizeQuestionImportUpload(profile:AuthProfile,input:{filename:string;mimeType:string;byteSize:number}){if(!profile.instituteId)throw new Error("PRACTICE_UNAUTHORIZED");validateQuestionImportMetadata(input.filename,input.mimeType,input.byteSize);const s=await createClient(),sourceId=randomUUID(),safeName=input.filename.replace(/[^A-Za-z0-9._-]/g,"_").slice(-180),path=`question-imports/${profile.instituteId}/${sourceId}/${safeName}`;const{data,error}=await s.storage.from("practice-work-private").createSignedUploadUrl(path);if(error)throw new Error(`STORAGE_UPLOAD_AUTH:${error.message}`);return{sourceId,storagePath:path,uploadToken:data.token}}
-export async function processUploadedQuestions(profile:AuthProfile,input:{sourceId:string;storagePath:string;originalFilename:string;declaredMimeType:string;declaredByteSize:number;clientSha256?:string;boardId:string;classId:string;subjectId:string;bookName?:string;chapter?:string;questionExamDate?:string;sourceFullMarks:number}){
-  if(!profile.instituteId)throw new Error("PRACTICE_UNAUTHORIZED");const s=await createClient(),instituteId=profile.instituteId,expectedPrefix=`question-imports/${instituteId}/${input.sourceId}/`;if(!input.storagePath.startsWith(expectedPrefix)||input.storagePath.slice(expectedPrefix.length).includes("/"))throw new Error("IMPORT_PATH_INVALID");validateQuestionImportMetadata(input.originalFilename,input.declaredMimeType,input.declaredByteSize);await validateOwnership(s,instituteId,input);const download=await s.storage.from("practice-work-private").download(input.storagePath);if(download.error)throw new Error(`STORAGE_DOWNLOAD:${download.error.message}`);const bytes=new Uint8Array(await download.data.arrayBuffer());let validated;try{validated=await validateQuestionImportBytes(bytes,input.originalFilename,input.declaredMimeType);if(bytes.byteLength!==input.declaredByteSize)throw new Error("FILE_SIZE_MISMATCH");if(input.clientSha256&&validated.sha256!==input.clientSha256)throw new Error("FILE_HASH_MISMATCH")}catch(error){await s.storage.from("practice-work-private").remove([input.storagePath]);throw error}const{mimeType,sha256}=validated;const{data:duplicate}=await s.from("practice_question_source_files").select("id").eq("institute_id",instituteId).eq("sha256",sha256).maybeSingle();if(duplicate){await s.storage.from("practice-work-private").remove([input.storagePath]);throw new Error("DUPLICATE_IMPORT")}
-  const{error:sourceError}=await s.from("practice_question_source_files").insert({id:input.sourceId,institute_id:instituteId,storage_path:input.storagePath,original_filename:input.originalFilename,mime_type:mimeType,byte_size:bytes.byteLength,sha256,status:"processing",created_by:profile.id});if(sourceError){await s.storage.from("practice-work-private").remove([input.storagePath]);throw sourceError}
-  const{data:batch,error:batchError}=await s.from("ai_question_generations").insert({institute_id:instituteId,source_type:"import",board_id:input.boardId,class_id:input.classId,subject_id:input.subjectId,book_name:input.bookName??null,chapter:input.chapter??null,source_full_marks:input.sourceFullMarks,question_exam_date:input.questionExamDate??null,source_file_id:input.sourceId,template_id:null,question_count_requested:1,difficulty:"intermediate",model:null,status:"processing",created_by:profile.id}).select("id").single();if(batchError)throw batchError;
-  try{const extraction=await extractQuestionsWithMetadata(bytes,mimeType,input.originalFilename);await persistDrafts(s,profile,batch.id,input.sourceId,input.originalFilename,extraction.questions,extraction.model);return batch.id}catch(error){const code=error instanceof Error?error.message:"IMPORT_FAILED";await Promise.all([s.from("ai_question_generations").update({status:"failed",safe_error_code:code.slice(0,100)}).eq("id",batch.id),s.from("practice_question_source_files").update({status:"failed",safe_error_code:code.slice(0,100)}).eq("id",input.sourceId)]);throw new QuestionImportError(code,batch.id)}
+export async function authorizeQuestionImportUpload(profile:AuthProfile,input:{filename:string;mimeType:string;byteSize:number}){
+  if(!profile.instituteId)throw new Error("PRACTICE_UNAUTHORIZED");
+  validateQuestionImportMetadata(input.filename,input.mimeType,input.byteSize);
+  const s=await createClient(),sourceId=randomUUID(),safeName=input.filename.replace(/[^A-Za-z0-9._-]/g,"_").slice(-180),path=`question-imports/${profile.instituteId}/${sourceId}/${safeName}`;
+  const{data,error}=await s.storage.from("practice-work-private").createSignedUploadUrl(path);
+  if(error)throw new Error(`STORAGE_UPLOAD_AUTH:${error.message}`);
+  return{sourceId,storagePath:path,uploadToken:data.token};
 }
 
-export async function retryQuestionExtraction(profile:AuthProfile,generationId:string){if(!profile.instituteId)throw new Error("PRACTICE_UNAUTHORIZED");const s=await createClient();const{data:g,error}=await s.from("ai_question_generations").select("id,status,source_file_id,source_file:practice_question_source_files!inner(id,storage_path,original_filename,mime_type)").eq("id",generationId).eq("institute_id",profile.instituteId).eq("source_type","import").single();if(error||!g)throw new Error("IMPORT_NOT_FOUND");if(g.status!=="failed")throw new Error("IMPORT_RETRY_NOT_ALLOWED");const source=Array.isArray(g.source_file)?g.source_file[0]:g.source_file;if(!source)throw new Error("IMPORT_SOURCE_NOT_FOUND");const download=await s.storage.from("practice-work-private").download(source.storage_path);if(download.error)throw download.error;await Promise.all([s.from("ai_question_generations").update({status:"processing",safe_error_code:null}).eq("id",g.id).eq("institute_id",profile.instituteId),s.from("practice_question_source_files").update({status:"processing",safe_error_code:null}).eq("id",source.id).eq("institute_id",profile.instituteId)]);try{const extraction=await extractQuestionsWithMetadata(new Uint8Array(await download.data.arrayBuffer()),source.mime_type,source.original_filename);const{count}=await s.from("ai_generated_questions").select("id",{count:"exact",head:true}).eq("ai_generation_id",g.id);if(count)throw new Error("IMPORT_RETRY_WOULD_DUPLICATE");await persistDrafts(s,profile,g.id,source.id,source.original_filename,extraction.questions,extraction.model);return g.id}catch(error){const code=error instanceof Error?error.message:"IMPORT_FAILED";await Promise.all([s.from("ai_question_generations").update({status:"failed",safe_error_code:code.slice(0,100)}).eq("id",g.id),s.from("practice_question_source_files").update({status:"failed",safe_error_code:code.slice(0,100)}).eq("id",source.id)]);throw error}}
+export async function processUploadedQuestions(profile:AuthProfile,input:{sourceId:string;storagePath:string;originalFilename:string;declaredMimeType:string;declaredByteSize:number;clientSha256?:string;boardId:string;classId:string;subjectId:string;bookName?:string;chapter?:string;questionExamDate?:string;sourceFullMarks:number}){
+  if(!profile.instituteId)throw new Error("PRACTICE_UNAUTHORIZED");
+  const s=await createClient(),instituteId=profile.instituteId,expectedPrefix=`question-imports/${instituteId}/${input.sourceId}/`;
+  if(!input.storagePath.startsWith(expectedPrefix)||input.storagePath.slice(expectedPrefix.length).includes("/"))throw new Error("IMPORT_PATH_INVALID");
+  validateQuestionImportMetadata(input.originalFilename,input.declaredMimeType,input.declaredByteSize);
+  if(!["application/pdf","image/jpeg","image/png"].includes(input.declaredMimeType))throw new Error("UNSUPPORTED_FILE");
+  await validateOwnership(s,instituteId,input);
+  const download=await s.storage.from("practice-work-private").download(input.storagePath);
+  if(download.error)throw new Error(`STORAGE_DOWNLOAD:${download.error.message}`);
+  const bytes=new Uint8Array(await download.data.arrayBuffer());
+  let validated;
+  try{
+    validated=await validateQuestionImportBytes(bytes,input.originalFilename,input.declaredMimeType);
+    if(bytes.byteLength!==input.declaredByteSize)throw new Error("FILE_SIZE_MISMATCH");
+    if(input.clientSha256&&validated.sha256!==input.clientSha256)throw new Error("FILE_HASH_MISMATCH");
+  }catch(error){
+    await s.storage.from("practice-work-private").remove([input.storagePath]);
+    throw error;
+  }
+  const{mimeType,sha256}=validated;
+  const{data:duplicate}=await s.from("practice_question_source_files").select("id").eq("institute_id",instituteId).eq("sha256",sha256).maybeSingle();
+  if(duplicate){await s.storage.from("practice-work-private").remove([input.storagePath]);throw new Error("DUPLICATE_IMPORT")}
+  const displayTitle=[input.bookName,input.chapter].filter(Boolean).join(" · ")||input.originalFilename;
+  const{error}=await s.from("practice_question_source_files").insert({
+    id:input.sourceId,institute_id:instituteId,storage_path:input.storagePath,original_filename:input.originalFilename,mime_type:mimeType,byte_size:bytes.byteLength,sha256,status:"ready",created_by:profile.id,
+    board_id:input.boardId,class_id:input.classId,subject_id:input.subjectId,book_name:input.bookName??null,chapter:input.chapter??null,question_exam_date:input.questionExamDate??null,source_full_marks:input.sourceFullMarks,display_title:displayTitle
+  });
+  if(error){await s.storage.from("practice-work-private").remove([input.storagePath]);throw error}
+  return input.sourceId;
+}
 
-async function persistDrafts(s:Awaited<ReturnType<typeof createClient>>,profile:AuthProfile,generationId:string,sourceId:string,filename:string,drafts:ExtractedDraftQuestion[],model:string){const instituteId=profile.instituteId!;const normalized=drafts.map(q=>normalizeQuestionText(q.questionText));const{data:existing}=await s.from("question_bank").select("normalized_question_text").eq("institute_id",instituteId).in("normalized_question_text",normalized);const duplicates=new Set((existing??[]).map(v=>v.normalized_question_text));const rows=[];for(const q of drafts){let assetId:string|null=null;if(q.associatedImage&&q.associatedImageMimeType){assetId=randomUUID();const ext=q.associatedImageMimeType==="image/png"?"png":"jpg",assetPath=`question-assets/${instituteId}/${generationId}/${assetId}.${ext}`;const up=await s.storage.from("practice-work-private").upload(assetPath,q.associatedImage,{contentType:q.associatedImageMimeType});if(up.error)throw up.error;const asset=await s.from("practice_question_assets").insert({id:assetId,institute_id:instituteId,source_file_id:sourceId,storage_path:assetPath,mime_type:q.associatedImageMimeType,source_page:q.sourcePage,alt_text:(q.visualDescription??`QUESTION ASSET FROM ${filename}`).toUpperCase(),created_by:profile.id});if(asset.error)throw asset.error}rows.push({institute_id:instituteId,ai_generation_id:generationId,question_type:q.questionType,question_text:q.questionText,options:q.options,correct_answer:q.correctAnswer,accepted_answers:q.acceptedAnswers,answer_explanation:q.explanation,difficulty:q.difficulty,suggested_marks:q.suggestedMarks,tags:[...q.tags,...(q.extractionWarnings??[]).map(w=>`WARNING:${w}`)],source_page:q.sourcePage,source_reference:q.sourceReference,source_asset_id:assetId,duplicate_warning:duplicates.has(normalizeQuestionText(q.questionText))})}const inserted=await s.from("ai_generated_questions").insert(rows);if(inserted.error)throw inserted.error;await Promise.all([s.from("ai_question_generations").update({status:"review_required",model,generated_count:rows.length,question_count_requested:rows.length,safe_error_code:null}).eq("id",generationId),s.from("practice_question_source_files").update({status:"review_required",safe_error_code:null}).eq("id",sourceId)])}
+export async function retryQuestionExtraction(){throw new Error("IMPORT_RETRY_NOT_SUPPORTED")}
 
-async function validateOwnership(s:Awaited<ReturnType<typeof createClient>>,instituteId:string,m:{boardId:string;classId:string;subjectId:string}){const results=await Promise.all([s.from("boards").select("id").eq("id",m.boardId).eq("institute_id",instituteId).maybeSingle(),s.from("academic_classes").select("id").eq("id",m.classId).eq("institute_id",instituteId).maybeSingle(),s.from("subjects").select("id").eq("id",m.subjectId).eq("institute_id",instituteId).maybeSingle()]);if(results.some(r=>r.error||!r.data))throw new Error("PRACTICE_REFERENCE_INVALID")}
+async function validateOwnership(s:Awaited<ReturnType<typeof createClient>>,instituteId:string,m:{boardId:string;classId:string;subjectId:string}){
+  const results=await Promise.all([
+    s.from("boards").select("id").eq("id",m.boardId).eq("institute_id",instituteId).maybeSingle(),
+    s.from("academic_classes").select("id").eq("id",m.classId).eq("institute_id",instituteId).maybeSingle(),
+    s.from("subjects").select("id").eq("id",m.subjectId).eq("institute_id",instituteId).maybeSingle()
+  ]);
+  if(results.some(r=>r.error||!r.data))throw new Error("PRACTICE_REFERENCE_INVALID");
+}
