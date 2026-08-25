@@ -13,6 +13,7 @@ export interface AttendanceBatchOption extends AttendanceOption {
 export interface AcademicYearAttendanceOption extends AttendanceOption {
   startDate: string;
   endDate: string;
+  isCurrent: boolean;
 }
 
 export interface AttendanceOptions {
