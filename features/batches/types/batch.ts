@@ -6,7 +6,8 @@ export interface Batch {
   isActive:boolean; createdAt:string|null; schedules:BatchSchedule[];
 }
 export interface BatchOption { id:string; label:string }
-export interface BatchFormOptions { academicYears:BatchOption[]; branches:BatchOption[]; boards:BatchOption[]; classes:BatchOption[]; subjects:BatchOption[] }
+export interface BatchAcademicYearOption extends BatchOption { isCurrent:boolean; startDate:string; endDate:string }
+export interface BatchFormOptions { academicYears:BatchAcademicYearOption[]; branches:BatchOption[]; boards:BatchOption[]; classes:BatchOption[]; subjects:BatchOption[] }
 export interface BatchConflict { scheduleId:string; batchId:string; batchName:string; dayOfWeek:number; existingStartTime:string; existingEndTime:string; proposedStartTime:string; proposedEndTime:string }
 export type BatchFieldErrors=Partial<Record<"academicYearId"|"branchId"|"boardIds"|"classIds"|"subjectId"|"name"|"effectiveFrom"|"schedules",string[]>>;
 export type BatchActionResult=
