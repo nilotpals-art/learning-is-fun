@@ -9,7 +9,6 @@ import type { PublishedStudentResult } from "@/features/learning-planner/types/e
 export interface StudentDashboardIdentity {
   id: string;
   name: string;
-  dateOfBirth: string | null;
   academicYearId: string | null;
   academicYearName: string | null;
   batchId: string | null;
