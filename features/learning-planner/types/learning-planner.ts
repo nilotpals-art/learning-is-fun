@@ -61,7 +61,7 @@ export type EventPlannerActionResult = PlannerActionResult | { status: "conflict
 export interface PlannerOverview { classesToday: number; upcomingEvents: number; rescheduled: number; cancelled: number; nextEvent: ScheduleEvent | null; recentChanges: ScheduleChange[] }
 
 export type HolidayScope = "national" | "state" | "institute" | "branch";
-export interface HolidaySettings { countryCode: "IN"; stateCode: string | null; showNationalHolidays: boolean; showStateHolidays: boolean }
+export interface HolidaySettings { countryCode: "IN"; stateCode: string | null; showNationalHolidays: boolean; showStateHolidays: boolean; portalThemeEnabled: boolean }
 export interface PublicHoliday { id: string; externalId: string | null; provider: string | null; name: string; date: string; scope: HolidayScope; subdivisionCode: string | null; branchId: string | null; source: "external" | "imported" | "institute"; readOnly: boolean; imported: boolean; observedAsHoliday: boolean | null }
 export interface HolidayCalendarData { holidays: PublicHoliday[]; providerAvailable: boolean }
 export interface HolidayImportInput { externalId: string; provider: string; name: string; date: string; scope: "national" | "state"; subdivisionCode?: string; branchId?: string; observedAsHoliday: boolean }
