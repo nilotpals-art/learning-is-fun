@@ -1,4 +1,5 @@
 import { BookOpen, GraduationCap, Sparkles } from "lucide-react";
+import { BirthdayCelebration } from "@/features/student-dashboard/components/birthday-celebration";
 import { StudentDashboard } from "@/features/student-dashboard/components/student-dashboard";
 import { getStudentDashboardData } from "@/features/student-dashboard/services/student-dashboard-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
@@ -48,7 +49,8 @@ export default async function StudentDashboardPage() {
           </div>
           <p className="hidden text-sm font-semibold text-slate-500 sm:block dark:text-slate-300">Learn something new every day ✨</p>
         </div>
-        <StudentDashboard data={data} isBirthday={isBirthday} />
+        {isBirthday ? <BirthdayCelebration studentName={data.student.name} /> : null}
+        <StudentDashboard data={data} />
       </div>
     </div>
   );
