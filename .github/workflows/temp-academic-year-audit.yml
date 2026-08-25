@@ -1,0 +1,21 @@
+name: Temporary Academic Year Audit
+on:
+  push:
+    branches: [academic-year-defaults]
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find academic year defaults
+        run: |
+          echo '=== FIRST-ITEM DEFAULTS ==='
+          grep -RInE 'academicYears\[0\]|years\[0\]' app features lib --include='*.ts' --include='*.tsx' || true
+          echo '=== ACADEMIC YEAR UI ==='
+          grep -RIn 'Academic Year' app features --include='*.tsx' | head -n 250 || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
