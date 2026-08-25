@@ -1,0 +1,1 @@
+Homepage assets use the institute-provided Learning Is Fun branding and classroom imagery. Replace placeholders only with approved institute-provided images.
