@@ -5,17 +5,17 @@ const loginLinks = [
   {
     href: "/login?portal=parent",
     label: "Parent Login",
-    className: "left-[10.5%] top-[94.45%] h-[3.1%] w-[20.2%]",
+    className: "left-[4.5%] top-[51.45%] h-[2.65%] w-[11.1%]",
   },
   {
     href: "/login?portal=student",
     label: "Student Login",
-    className: "left-[39.6%] top-[94.45%] h-[3.1%] w-[20.2%]",
+    className: "left-[36.5%] top-[51.45%] h-[2.65%] w-[12.1%]",
   },
   {
     href: "/login?portal=teacher",
     label: "Teacher Login",
-    className: "left-[68.5%] top-[94.45%] h-[3.1%] w-[20.2%]",
+    className: "left-[68.4%] top-[51.45%] h-[2.65%] w-[12.0%]",
   },
 ] as const;
 
@@ -40,7 +40,7 @@ export default function Home() {
             href={link.href}
             aria-label={link.label}
             title={link.label}
-            className={`absolute ${link.className} rounded-2xl focus:outline-none focus:ring-4 focus:ring-yellow-300/90`}
+            className={`absolute ${link.className} rounded-lg focus:outline-none focus:ring-4 focus:ring-yellow-300/90`}
           />
         ))}
       </div>
