@@ -1,15 +1,17 @@
+import Image from "next/image";
 import Link from "next/link";
-import { HOME_IMAGE } from "./data-home";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#031a3d]">
       <div className="relative mx-auto w-full max-w-[1024px] overflow-hidden bg-white shadow-2xl">
-        <img
-          src={HOME_IMAGE}
+        <Image
+          src="/landing/learning-is-fun-home.webp"
           alt="Learning Is Fun — English remedial and coaching classes for Class V to XII, ICSE, ISC and CBSE"
           width={512}
           height={768}
+          priority
+          sizes="(max-width: 1024px) 100vw, 1024px"
           className="block h-auto w-full select-none"
           draggable={false}
         />
