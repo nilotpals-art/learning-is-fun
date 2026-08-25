@@ -22,7 +22,7 @@ const loginLinks = [
 export default function Home() {
   return (
     <main className="bg-white">
-      <div className="relative mx-auto w-full max-w-[1024px] overflow-hidden bg-white shadow-2xl">
+      <div className="relative mx-auto h-[100dvh] w-full max-w-[1024px] overflow-hidden bg-white shadow-2xl md:h-auto">
         <Image
           src="/landing/learning-is-fun-home.jpg"
           alt="Learning Is Fun — English remedial and coaching classes for Class V to XII, ICSE, ISC and CBSE"
@@ -30,7 +30,7 @@ export default function Home() {
           height={1536}
           priority
           sizes="(max-width: 1024px) 100vw, 1024px"
-          className="block h-auto w-full select-none"
+          className="block h-full w-full select-none md:h-auto"
           draggable={false}
         />
 
