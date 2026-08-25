@@ -11,6 +11,6 @@ export interface FeeStructure {
   id: string; name: string; academicYearId: string; academicYearName: string; classId: string; className: string;
   isActive: boolean; isInUse: boolean; items: FeeStructureItem[]; updatedAt: string;
 }
-export interface FeeStructureOption { id: string; name: string }
+export interface FeeStructureOption { id: string; name: string; isCurrent?: boolean }
 export interface AdmissionFeeOverride { itemId: string; include: boolean; amount: number; discountType: "fixed" | "percentage" | null; discountValue: number }
 export type FeeStructureActionResult<T = undefined> = { status: "success"; message: string; data?: T } | { status: "error"; message: string; fieldErrors?: Record<string,string[]> };
