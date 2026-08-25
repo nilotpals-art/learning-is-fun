@@ -21,7 +21,7 @@ const loginLinks = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#031a3d]">
+    <main className="bg-white">
       <div className="relative mx-auto w-full max-w-[1024px] overflow-hidden bg-white shadow-2xl">
         <Image
           src="/landing/learning-is-fun-home.jpg"
