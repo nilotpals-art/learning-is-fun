@@ -49,7 +49,7 @@ export async function sendSyllabusPages(profile:AuthProfile,input:{subjectId:str
   const s=await createClient(),instituteId=scope(profile);
   const recipient=(process.env.SYLLABUS_SUBMISSION_EMAIL??"").trim();
   const apiKey=(process.env.BREVO_API_KEY??"").trim();
-  const senderEmail=(process.env.BREVO_SENDER_EMAIL??recipient).trim();
+  const senderEmail=(process.env.BREVO_SENDER_EMAIL??"").trim();
   if(!recipient||!apiKey||!senderEmail)throw new Error("SYLLABUS_EMAIL_NOT_CONFIGURED");
   const context=await getStudentSyllabusContext(profile);
   if(!context.subjects.some(v=>v.id===input.subjectId))throw new Error("SYLLABUS_SUBJECT_INVALID");
