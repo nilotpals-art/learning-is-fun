@@ -5,6 +5,8 @@ import type { AuthProfile } from "@/features/auth/types/auth";
 import { validateQuestionImportBytes, validateQuestionImportMetadata } from "@/features/practice-work/services/question-import-file";
 import { createClient } from "@/lib/supabase/server";
 
+export class QuestionImportError extends Error { constructor(message:string,readonly generationId:string){super(message)} }
+
 export async function authorizeQuestionImportUpload(profile:AuthProfile,input:{filename:string;mimeType:string;byteSize:number}){
   if(!profile.instituteId)throw new Error("PRACTICE_UNAUTHORIZED");
   validateQuestionImportMetadata(input.filename,input.mimeType,input.byteSize);
@@ -45,7 +47,7 @@ export async function processUploadedQuestions(profile:AuthProfile,input:{source
   return input.sourceId;
 }
 
-export async function retryQuestionExtraction(){throw new Error("IMPORT_RETRY_NOT_SUPPORTED")}
+export async function retryQuestionExtraction(_profile?:AuthProfile,_generationId?:string):Promise<never>{throw new Error("IMPORT_RETRY_NOT_SUPPORTED")}
 
 async function validateOwnership(s:Awaited<ReturnType<typeof createClient>>,instituteId:string,m:{boardId:string;classId:string;subjectId:string}){
   const results=await Promise.all([
