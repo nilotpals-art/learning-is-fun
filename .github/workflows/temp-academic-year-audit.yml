@@ -2,17 +2,94 @@ name: Temporary Academic Year Audit
 on:
   push:
     branches: [academic-year-defaults]
+permissions:
+  contents: write
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Find academic year defaults
+      - name: Apply current-year defaults
         run: |
-          echo '=== FIRST-ITEM DEFAULTS ==='
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old in text:
+                  p.write_text(text.replace(old, new))
+
+          # Planner Add Event: current Academic Year by default.
+          replace('features/learning-planner/components/event-manager.tsx',
+            'relatedEvent?.academicYearId ?? options.academicYears[0]?.id ?? ""',
+            'relatedEvent?.academicYearId ?? options.academicYears.find((year) => year.isCurrent)?.id ?? options.academicYears[0]?.id ?? ""')
+          replace('features/learning-planner/components/event-manager.tsx',
+            '{options.academicYears.map((year) => <option key={year.id} value={year.id}>{year.label}</option>)}',
+            '{options.academicYears.map((year) => <option key={year.id} value={year.id}>{year.label}{year.isCurrent ? " (Current)" : ""}</option>)}')
+
+          # Enrollment Links: current year by default.
+          replace('features/student-enrollment/components/admin-enrollment-links.tsx',
+            'type Option={id:string;name:string};',
+            'type Option={id:string;name:string;isCurrent?:boolean};')
+          replace('features/student-enrollment/components/admin-enrollment-links.tsx',
+            'useState(academicYears[0]?.id??"")',
+            'useState(academicYears.find((year)=>year.isCurrent)?.id??academicYears[0]?.id??"")')
+          replace('features/student-enrollment/components/admin-enrollment-links.tsx',
+            '{academicYears.map((x)=><option key={x.id} value={x.id}>{x.name}</option>)}',
+            '{academicYears.map((x)=><option key={x.id} value={x.id}>{x.name}{x.isCurrent?" (Current)":""}</option>)}')
+
+          # Fee Structures: current year default and label.
+          replace('features/fees/components/fee-structures-manager.tsx',
+            'const[year,setYear]=useState(years[0]?.id??"")',
+            'const[year,setYear]=useState(years.find(x=>x.isCurrent)?.id??years[0]?.id??"")')
+          replace('features/fees/components/fee-structures-manager.tsx',
+            '{years.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}',
+            '{years.map(x=><option key={x.id} value={x.id}>{x.name}{x.isCurrent?" (Current)":""}</option>)}')
+
+          # Fees: current year default in assignment, collection and reports.
+          replace('features/fees/components/fees-manager.tsx',
+            'const [yearId, setYear] = useState(years[0]?.id ?? "")',
+            'const [yearId, setYear] = useState(years.find((year) => year.isCurrent)?.id ?? years[0]?.id ?? "")')
+          replace('features/fees/components/fees-manager.tsx',
+            'const [yearId,setYear]=useState(years[0]?.id??"")',
+            'const [yearId,setYear]=useState(years.find((year)=>year.isCurrent)?.id??years[0]?.id??"")')
+          replace('features/fees/components/fees-manager.tsx',
+            'const [studentId,setStudentId]=useState(""); const [yearId,setYearId]=useState("");',
+            'const [studentId,setStudentId]=useState(""); const [yearId,setYearId]=useState(years.find((year)=>year.isCurrent)?.id??years[0]?.id??"");')
+          replace('features/fees/components/fees-manager.tsx',
+            '{years.map((x)=><option key={x.id} value={x.id}>{x.name}</option>)}',
+            '{years.map((x)=><option key={x.id} value={x.id}>{x.name}{x.isCurrent?" (Current)":""}</option>)}')
+          replace('features/fees/components/admin-collect-payment.tsx',
+            'useState(years[0]?.id ?? "")',
+            'useState(years.find((year) => year.isCurrent)?.id ?? years[0]?.id ?? "")')
+          replace('features/fees/components/admin-collect-payment.tsx',
+            '{years.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}',
+            '{years.map((year) => <option key={year.id} value={year.id}>{year.name}{year.isCurrent ? " (Current)" : ""}</option>)}')
+
+          # Attendance: current year is primary/default.
+          replace('features/attendance/components/attendance-manager.tsx',
+            'useState("");\n  const [batchId',
+            'useState(options.academicYears.find((year) => year.isCurrent)?.id ?? options.academicYears[0]?.id ?? "");\n  const [batchId')
+          replace('features/attendance/components/attendance-manager.tsx',
+            '{options.academicYears.map((year) => <option key={year.id} value={year.id}>{year.label}</option>)}',
+            '{options.academicYears.map((year) => <option key={year.id} value={year.id}>{year.label}{year.isCurrent ? " (Current)" : ""}</option>)}')
+
+          # Restore existing planner deactivation semantics exactly.
+          replace('features/learning-planner/services/schedule-service.ts',
+            'export async function deactivateClassSchedule(profile:AuthProfile,id:string):Promise<void>{const supabase=await createClient();const{data,error}=await supabase.from("class_schedules").update({is_active:false,effective_to:new Date().toISOString().slice(0,10)}).eq("id",id).eq("institute_id",scope(profile)).select("id").maybeSingle();if(error)throw error;if(!data)throw new Error("PLANNER_NOT_FOUND");}',
+            'export async function deactivateClassSchedule(profile: AuthProfile, id: string): Promise<void> { const supabase = await createClient(); const { data, error } = await supabase.from("class_schedules").update({ is_active: false }).eq("id", id).eq("institute_id", scope(profile)).select("id").maybeSingle(); if (error) throw error; if (!data) throw new Error("PLANNER_NOT_FOUND"); }')
+          PY
+          if ! git diff --quiet; then
+            git config user.name "Learning Is Fun Build Fix"
+            git config user.email "actions@users.noreply.github.com"
+            git add features
+            git commit -m "Default academic year selectors to current year"
+            git push
+          fi
+      - name: Find remaining first-item defaults
+        run: |
           grep -RInE 'academicYears\[0\]|years\[0\]' app features lib --include='*.ts' --include='*.tsx' || true
-          echo '=== ACADEMIC YEAR UI ==='
-          grep -RIn 'Academic Year' app features --include='*.tsx' | head -n 250 || true
       - uses: actions/setup-node@v4
         with:
           node-version: 24
