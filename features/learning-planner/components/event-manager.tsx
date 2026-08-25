@@ -29,7 +29,7 @@ function EventDialog({ open, onOpenChange, options, relatedEvent }: { open: bool
   const [pending, start] = useTransition();
   const [type, setType] = useState<ScheduleType>("extra_class");
   const [batchId, setBatchId] = useState(relatedEvent?.batchId ?? "");
-  const [academicYearId, setAcademicYearId] = useState(relatedEvent?.academicYearId ?? options.academicYears[0]?.id ?? "");
+  const [academicYearId, setAcademicYearId] = useState(relatedEvent?.academicYearId ?? options.academicYears.find((year) => year.isCurrent)?.id ?? options.academicYears[0]?.id ?? "");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<EventOverlapConflict[]>([]);
   const batch = options.batches.find((item) => item.id === batchId);

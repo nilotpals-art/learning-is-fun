@@ -11,9 +11,11 @@ export const PROMOTION_TYPES = [
 export type PromotionType = (typeof PROMOTION_TYPES)[number];
 
 export interface AssignmentOption { id: string; label: string }
+export interface AssignmentAcademicYearOption extends AssignmentOption { isCurrent: boolean }
 export interface AssignmentBatchOption extends AssignmentOption {
   boardId: string;
   classId: string;
+  academicYearId: string | null;
 }
 
 export interface StudentAssignment {
@@ -41,7 +43,7 @@ export interface StudentAssignment {
 
 export interface AssignmentFormOptions {
   students: AssignmentOption[];
-  academicYears: AssignmentOption[];
+  academicYears: AssignmentAcademicYearOption[];
   schools: AssignmentOption[];
   boards: AssignmentOption[];
   classes: AssignmentOption[];

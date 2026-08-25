@@ -24,20 +24,22 @@ export function AssignmentForm({ open, studentId, current, options, onOpenChange
 }) {
   const [pending, startTransition] = useTransition();
   const [schools, setSchools] = useState(options.schools);
+  const currentAcademicYearId = options.academicYears.find((year) => year.isCurrent)?.id ?? options.academicYears[0]?.id ?? "";
   const form = useForm<StudentAssignmentValues>({ resolver: zodResolver(studentAssignmentSchema), defaultValues: {
-    studentId: "", academicYearId: "", schoolId: "", boardId: "", classId: "", batchId: "",
+    studentId: "", academicYearId: currentAcademicYearId, schoolId: "", boardId: "", classId: "", batchId: "",
     effectiveFrom: new Date().toISOString().slice(0, 10), promotionType: "New Admission", remarks: "",
   }});
   useEffect(() => { if (!open) return; form.reset({
-    studentId: studentId ?? current?.studentId ?? "", academicYearId: current?.academicYearId ?? options.academicYears[0]?.id ?? "",
+    studentId: studentId ?? current?.studentId ?? "", academicYearId: current?.academicYearId ?? currentAcademicYearId,
     schoolId: current?.schoolId ?? "", boardId: current?.boardId ?? "", classId: current?.classId ?? "",
     batchId: "", effectiveFrom: new Date().toISOString().slice(0, 10),
     promotionType: current ? "Batch Transfer" : "New Admission", remarks: "",
-  }); }, [current, form, open, options.academicYears, studentId]);
+  }); }, [current, currentAcademicYearId, form, open, studentId]);
+  const academicYearId = useWatch({ control: form.control, name: "academicYearId" });
   const schoolId = useWatch({ control: form.control, name: "schoolId" });
   const boardId = useWatch({ control: form.control, name: "boardId" });
   const classId = useWatch({ control: form.control, name: "classId" });
-  const batches = useMemo(() => options.batches.filter((batch) => batch.boardId === boardId && batch.classId === classId), [boardId, classId, options.batches]);
+  const batches = useMemo(() => options.batches.filter((batch) => batch.academicYearId === academicYearId && batch.boardId === boardId && batch.classId === classId), [academicYearId, boardId, classId, options.batches]);
   useEffect(() => { if (!batches.some((batch) => batch.id === form.getValues("batchId"))) form.setValue("batchId", ""); }, [batches, form]);
   const errors = form.formState.errors;
   const submit = form.handleSubmit((values) => startTransition(async () => {
@@ -46,12 +48,12 @@ export function AssignmentForm({ open, studentId, current, options, onOpenChange
     onOpenChange(false); onSaved(result.message);
   }));
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{current ? "Change Academic Assignment" : "Assign Student"}</DialogTitle><DialogDescription>{current ? "The Current assignment will be closed one day before the new Effective From date." : "Create the Student's first Current academic assignment."}</DialogDescription></DialogHeader><form id="assignment-form" onSubmit={submit} className="grid gap-4 sm:grid-cols-2" noValidate>
+    <Field label="Academic Year" error={errors.academicYearId?.message}><select className={controlClass} disabled={pending} {...form.register("academicYearId")}><option value="">Select Academic Year</option>{options.academicYears.map((year) => <option key={year.id} value={year.id}>{year.label}{year.isCurrent ? " (Current)" : ""}</option>)}</select></Field>
     <Field label="Student" error={errors.studentId?.message}><select className={controlClass} disabled={pending} {...form.register("studentId")}><option value="">Select Student</option>{options.students.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select></Field>
-    <Field label="Academic Year" error={errors.academicYearId?.message}><select className={controlClass} disabled={pending} {...form.register("academicYearId")}><option value="">Select Academic Year</option>{options.academicYears.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select></Field>
     <Field label="School" error={errors.schoolId?.message}><SchoolCombobox schools={schools} value={schoolId} disabled={pending} onChange={(nextSchoolId) => form.setValue("schoolId", nextSchoolId, { shouldDirty: true, shouldValidate: true })} onCreated={(school) => setSchools((currentSchools) => currentSchools.some((item) => item.id === school.id) ? currentSchools : [...currentSchools, school].sort((a, b) => a.label.localeCompare(b.label)))} /></Field>
     <Field label="Board" error={errors.boardId?.message}><select className={controlClass} disabled={pending} {...form.register("boardId")}><option value="">Select Board</option>{options.boards.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select></Field>
     <Field label="Class" error={errors.classId?.message}><select className={controlClass} disabled={pending} {...form.register("classId")}><option value="">Select Class</option>{options.classes.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select></Field>
-    <Field label="Batch" error={errors.batchId?.message}><select className={controlClass} disabled={pending || !boardId || !classId} {...form.register("batchId")}><option value="">Select compatible Batch</option>{batches.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select></Field>
+    <Field label="Batch" error={errors.batchId?.message}><select className={controlClass} disabled={pending || !academicYearId || !boardId || !classId} {...form.register("batchId")}><option value="">Select compatible Batch</option>{batches.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select></Field>
     <Field label="Effective From" error={errors.effectiveFrom?.message}><Input type="date" disabled={pending} {...form.register("effectiveFrom")} /></Field>
     <Field label="Promotion Type" error={errors.promotionType?.message}><select className={controlClass} disabled={pending} {...form.register("promotionType")}>{PROMOTION_TYPES.map((x) => <option key={x}>{x}</option>)}</select></Field>
     <div className="space-y-2 sm:col-span-2"><label className="text-sm font-semibold">Remarks</label><textarea className={`${controlClass} min-h-24 py-2`} disabled={pending} {...form.register("remarks")} />{errors.remarks?.message ? <p className="text-sm text-destructive">{errors.remarks.message}</p> : null}</div>

@@ -35,13 +35,13 @@ function optionalOne<T>(value: T | T[] | null): T | null {
 export async function listAttendanceOptions(instituteId: string): Promise<AttendanceOptions> {
   const supabase = await createClient();
   const [years, batches] = await Promise.all([
-    supabase.from("academic_years").select("id, name, start_date, end_date").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }),
+    supabase.from("academic_years").select("id, name, start_date, end_date, is_current").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }),
     supabase.from("batches").select("id, name, schedules:class_schedules!class_schedules_batch_fkey(day_of_week,is_active)").eq("institute_id", instituteId).eq("is_active", true).order("name"),
   ]);
   const error = years.error ?? batches.error;
   if (error) throw error;
   return {
-    academicYears: (years.data ?? []).map((year) => ({ id: year.id, label: year.name, startDate: year.start_date, endDate: year.end_date })),
+    academicYears: (years.data ?? []).map((year) => ({ id: year.id, label: year.name, startDate: year.start_date, endDate: year.end_date, isCurrent: year.is_current === true })),
     batches: ((batches.data ?? []) as unknown as AttendanceBatchRow[]).map((batch) => ({
       id: batch.id,
       label: batch.name,

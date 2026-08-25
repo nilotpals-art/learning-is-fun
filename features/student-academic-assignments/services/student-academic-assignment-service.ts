@@ -60,18 +60,18 @@ export async function listAssignmentOptions(instituteId: string): Promise<Assign
   const supabase = await createClient();
   const [students, years, schools, boards, classes, batches, batchBoards, batchClasses] = await Promise.all([
     supabase.from("students").select("id, name, admission_no").eq("institute_id", instituteId).order("name"),
-    supabase.from("academic_years").select("id, name").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }),
+    supabase.from("academic_years").select("id, name, is_current").eq("institute_id", instituteId).eq("is_active", true).order("start_date", { ascending: false }),
     supabase.from("schools").select("id, name").eq("institute_id", instituteId).eq("is_active", true).order("name"),
     supabase.from("boards").select("id, name").eq("institute_id", instituteId).order("name"),
     supabase.from("academic_classes").select("id, class_name").eq("institute_id", instituteId).order("display_order", { nullsFirst: false }),
-    supabase.from("batches").select("id, name").eq("institute_id", instituteId).eq("is_active", true).order("name"),
+    supabase.from("batches").select("id, name, academic_year_id").eq("institute_id", instituteId).eq("is_active", true).order("name"),
     supabase.from("batch_boards").select("batch_id, board_id").eq("institute_id", instituteId),
     supabase.from("batch_classes").select("batch_id, class_id").eq("institute_id", instituteId),
   ]);
   const error = students.error ?? years.error ?? schools.error ?? boards.error ?? classes.error ?? batches.error ?? batchBoards.error ?? batchClasses.error;
   if (error) throw error;
 
-  const activeBatchMap = new Map((batches.data ?? []).map((batch) => [batch.id as string, batch.name as string]));
+  const activeBatchMap = new Map((batches.data ?? []).map((batch) => [batch.id as string, { label: batch.name as string, academicYearId: batch.academic_year_id as string | null }]));
   const boardsByBatch = new Map<string, string[]>();
   const classesByBatch = new Map<string, string[]>();
   for (const link of batchBoards.data ?? []) {
@@ -84,15 +84,15 @@ export async function listAssignmentOptions(instituteId: string): Promise<Assign
     list.push(link.class_id as string);
     classesByBatch.set(link.batch_id as string, list);
   }
-  const compatibleBatches = [...activeBatchMap.entries()].flatMap(([batchId, label]) =>
+  const compatibleBatches = [...activeBatchMap.entries()].flatMap(([batchId, batch]) =>
     (boardsByBatch.get(batchId) ?? []).flatMap((boardId) =>
-      (classesByBatch.get(batchId) ?? []).map((classId) => ({ id: batchId, label, boardId, classId })),
+      (classesByBatch.get(batchId) ?? []).map((classId) => ({ id: batchId, label: batch.label, boardId, classId, academicYearId: batch.academicYearId })),
     ),
   );
 
   return {
     students: (students.data ?? []).map((x) => ({ id: x.id, label: `${x.name} (${x.admission_no})` })),
-    academicYears: (years.data ?? []).map((x) => ({ id: x.id, label: x.name })),
+    academicYears: (years.data ?? []).map((x) => ({ id: x.id, label: x.name, isCurrent: x.is_current === true })),
     schools: (schools.data ?? []).map((x) => ({ id: x.id, label: x.name })),
     boards: (boards.data ?? []).map((x) => ({ id: x.id, label: x.name })),
     classes: (classes.data ?? []).map((x) => ({ id: x.id, label: x.class_name })),

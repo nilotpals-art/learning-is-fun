@@ -21,7 +21,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
   const [pending, start] = useTransition();
   const router = useRouter();
   const [studentId, setStudent] = useState(students[0]?.id ?? "");
-  const [yearId, setYear] = useState(years[0]?.id ?? "");
+  const [yearId, setYear] = useState(years.find((year) => year.isCurrent)?.id ?? years[0]?.id ?? "");
   const [modeId, setMode] = useState(modes[0]?.id ?? "");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [referenceNo, setReferenceNo] = useState("");
@@ -78,7 +78,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
           <form className="space-y-5" onSubmit={submit}>
             <div className="grid gap-4 md:grid-cols-3">
               <label className="grid gap-2 text-sm">Student<select className={select} value={studentId} onChange={(event) => { setStudent(event.target.value); setAmounts({}); }} required>{students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}</select></label>
-              <label className="grid gap-2 text-sm">Academic Year<select className={select} value={yearId} onChange={(event) => { setYear(event.target.value); setAmounts({}); }} required>{years.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}</select></label>
+              <label className="grid gap-2 text-sm">Academic Year<select className={select} value={yearId} onChange={(event) => { setYear(event.target.value); setAmounts({}); }} required>{years.map((year) => <option key={year.id} value={year.id}>{year.name}{year.isCurrent ? " (Current)" : ""}</option>)}</select></label>
               <label className="grid gap-2 text-sm">Payment Mode<select className={select} value={modeId} onChange={(event) => setMode(event.target.value)} required>{modes.map((mode) => <option key={mode.id} value={mode.id}>{mode.name}</option>)}</select></label>
               <label className="grid gap-2 text-sm">Payment Date<Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} required /></label>
               <label className="grid gap-2 text-sm">Reference / Transaction No. <span className="text-xs text-muted-foreground">Optional</span><Input value={referenceNo} onChange={(event) => setReferenceNo(event.target.value)} /></label>

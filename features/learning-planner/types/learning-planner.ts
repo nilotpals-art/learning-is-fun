@@ -13,8 +13,9 @@ export type NotificationPriority = (typeof NOTIFICATION_PRIORITIES)[number];
 export type DeliveryChannel = (typeof DELIVERY_CHANNELS)[number];
 
 export interface PlannerOption { id: string; label: string }
+export interface PlannerAcademicYearOption extends PlannerOption { isCurrent: boolean }
 export interface PlannerBatchOption extends PlannerOption { academicYearId: string | null; subjectId: string | null; subjectName: string | null; branchId: string | null }
-export interface PlannerOptions { academicYears: PlannerOption[]; batches: PlannerBatchOption[]; subjects: PlannerOption[]; branches: PlannerOption[] }
+export interface PlannerOptions { academicYears: PlannerAcademicYearOption[]; batches: PlannerBatchOption[]; subjects: PlannerOption[]; branches: PlannerOption[] }
 export interface ClassSchedule {
   id: string; branchId: string | null; academicYearId: string; academicYearName: string;
   academicYearStartDate: string; academicYearEndDate: string;
