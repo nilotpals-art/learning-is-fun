@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { processQuestionImportSchema } from "@/features/practice-work/schemas/question-import-schema";
 import { processUploadedQuestions } from "@/features/practice-work/services/question-import-service";
-import { assignUploadedQuestionFile } from "@/features/practice-work/services/uploaded-question-file-service";
+import { assignUploadedQuestionFile, deleteUploadedQuestionFile } from "@/features/practice-work/services/uploaded-question-file-service";
 import type { PracticeActionResult } from "@/features/practice-work/types/practice-work";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 
 const assignSchema=z.object({sourceFileId:z.string().uuid(),batchId:z.union([z.string().uuid(),z.literal("")]).optional().transform(v=>v||undefined),studentIds:z.array(z.string().uuid()).default([]),availableFrom:z.string().optional(),dueAt:z.string().optional()}).superRefine((v,c)=>{if(!v.batchId&&!v.studentIds.length)c.addIssue({code:"custom",path:["studentIds"],message:"Select a batch or at least one student."})});
+const deleteSchema=z.object({sourceFileId:z.string().uuid()});
 const refresh=()=>["/practice-work","/practice-work/assignments","/practice-work/my-work"].forEach(path=>revalidatePath(path));
 
 export async function saveUploadedQuestionFileAction(input:unknown):Promise<PracticeActionResult<{sourceFileId:string}>>{
@@ -34,4 +35,14 @@ export async function assignUploadedQuestionFileAction(input:unknown):Promise<Pr
     refresh();
     return{status:"success",message:`Question file assigned to ${result.assignedCount} Student${result.assignedCount===1?"":"s"}.`};
   }catch{return{status:"error",message:"The uploaded question file could not be assigned."}}
+}
+
+export async function deleteUploadedQuestionFileAction(input:unknown):Promise<PracticeActionResult>{
+  const parsed=deleteSchema.safeParse(input);
+  if(!parsed.success)return{status:"error",message:"Invalid uploaded question file."};
+  try{
+    const profile=await requireRole(DASHBOARD_ROLES),result=await deleteUploadedQuestionFile(profile,parsed.data.sourceFileId);
+    refresh();
+    return{status:"success",message:`Uploaded question file deleted${result.removedAssignments?` along with ${result.removedAssignments} assignment${result.removedAssignments===1?"":"s"}`:""}.`};
+  }catch{return{status:"error",message:"The uploaded question file could not be deleted."}}
 }
