@@ -20,6 +20,13 @@ export interface FeeDue {
   scheduleType: "one_time" | "monthly" | "quarterly" | "custom" | null;
 }
 
+export interface FeePaymentAllocation {
+  amount: number;
+  dueDate: string;
+  feeHeadName: string;
+  scheduleType: "one_time" | "monthly" | "quarterly" | "custom" | null;
+}
+
 export interface FeePayment {
   id: string;
   studentId: string;
@@ -34,6 +41,7 @@ export interface FeePayment {
   remarks: string | null;
   status: "posted" | "reversed";
   reversalReason: string | null;
+  allocations: FeePaymentAllocation[];
 }
 
 export interface FeeMessage {
