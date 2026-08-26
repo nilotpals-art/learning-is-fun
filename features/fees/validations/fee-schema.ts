@@ -32,6 +32,7 @@ export const feePaymentSchema = z.object({
   paymentDate: z.string().datetime(),
   referenceNo: z.string().transform(normalizeUpperText).transform((value) => value || null).nullable(),
   remarks: z.string().transform(normalizeUpperText).transform((value) => value || null).nullable(),
+  receiptDelivery: z.enum(["none", "whatsapp", "email", "both"]).default("none"),
   allocations: z.array(z.object({ dueId: id, amount: money })).min(1),
 });
 
