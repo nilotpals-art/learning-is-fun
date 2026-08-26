@@ -10,6 +10,7 @@ import { studentAssignmentSchema } from "@/features/student-academic-assignments
 import { createSchoolSchema } from "@/features/student-academic-assignments/validations/school-schema";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 const errors: Record<string, string> = {
   STUDENT_ASSIGNMENT_STUDENT_INVALID: "Student not found.",
@@ -30,6 +31,17 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
   if (!profile.instituteId) redirect("/unauthorized");
   try {
     const result = await changeStudentAssignment(parsed.data);
+
+    // A student who had previously left can rejoin without losing any historical records.
+    // Creating a new Current assignment reactivates only the Student Master status.
+    const supabase = await createClient();
+    const { error: reactivateError } = await supabase
+      .from("students")
+      .update({ status: "Active", updated_at: new Date().toISOString() })
+      .eq("institute_id", profile.instituteId)
+      .eq("id", parsed.data.studentId)
+      .eq("status", "Left");
+    if (reactivateError) throw reactivateError;
 
     // Academic assignment/promotion is the existing-student equivalent of admission.
     // Apply the active fee structure for the selected Academic Year + Class so annual fee changes
@@ -58,7 +70,7 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
     revalidatePath("/students");
     revalidatePath("/fees/student-fees");
     revalidatePath("/fees/reports");
-    return { status: "success", assignmentId: result.assignmentId, message: result.operation === "created" ? "Student assigned successfully." : "Academic assignment changed and previous history preserved." };
+    return { status: "success", assignmentId: result.assignmentId, message: result.operation === "created" ? "Student assigned successfully. Left students are automatically reactivated when they rejoin." : "Academic assignment changed and previous history preserved." };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const code = Object.keys(errors).find((key) => message.includes(key));
