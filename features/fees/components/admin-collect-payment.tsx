@@ -16,6 +16,7 @@ const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR
 const date = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" });
 const select = "h-10 w-full rounded-2xl border border-input bg-background px-3 text-sm";
 const safeDate = (value: string) => new Date(value.includes("T") ? value : `${value}T00:00:00`);
+type ReceiptDelivery = "none" | "whatsapp" | "email" | "both";
 
 export function AdminCollectPayment({ students, years, modes, dues, settings }: { students: FeeStudent[]; years: FeeOption[]; modes: FeeOption[]; dues: FeeDue[]; settings: FeeSettings }) {
   const [pending, start] = useTransition();
@@ -26,6 +27,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [referenceNo, setReferenceNo] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [receiptDelivery, setReceiptDelivery] = useState<ReceiptDelivery>("none");
   const [amounts, setAmounts] = useState<Record<string, string>>({});
 
   const eligible = useMemo(
@@ -49,6 +51,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
         paymentDate: new Date(`${paymentDate}T12:00:00+05:30`).toISOString(),
         referenceNo: referenceNo || null,
         remarks: remarks || null,
+        receiptDelivery,
         allocations: eligible
           .map((due) => ({ dueId: due.id, amount: Number(amounts[due.id] ?? 0) }))
           .filter((allocation) => allocation.amount > 0),
@@ -63,6 +66,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
         setAmounts({});
         setReferenceNo("");
         setRemarks("");
+        setReceiptDelivery("none");
         router.refresh();
       }
     });
@@ -70,7 +74,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Collect Payment" description="Record a fee payment and issue a receipt. Transaction/reference number is optional." />
+      <PageHeader title="Collect Payment" description="Record a fee payment, issue a receipt, and optionally send it by WhatsApp and/or email." />
       <PaymentDetailsCard settings={settings} />
       <Card>
         <CardHeader><CardTitle>Record Payment</CardTitle></CardHeader>
@@ -83,6 +87,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
               <label className="grid gap-2 text-sm">Payment Date<Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} required /></label>
               <label className="grid gap-2 text-sm">Reference / Transaction No. <span className="text-xs text-muted-foreground">Optional</span><Input value={referenceNo} onChange={(event) => setReferenceNo(event.target.value)} /></label>
               <label className="grid gap-2 text-sm">Remarks <span className="text-xs text-muted-foreground">Optional</span><Input value={remarks} onChange={(event) => setRemarks(event.target.value)} /></label>
+              <label className="grid gap-2 text-sm md:col-span-3">Send Paid Receipt<select className={select} value={receiptDelivery} onChange={(event) => setReceiptDelivery(event.target.value as ReceiptDelivery)}><option value="none">Don&apos;t Send</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="both">WhatsApp + Email</option></select><span className="text-xs text-muted-foreground">Email is sent to available Student/Parent email addresses. WhatsApp follows the configured fee recipient preference.</span></label>
             </div>
 
             {eligible.map((due) => (
