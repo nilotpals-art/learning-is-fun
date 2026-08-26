@@ -59,10 +59,29 @@ export async function listFeeDues(profile: AuthProfile, studentId?: string | str
 }
 
 export async function listFeePayments(profile: AuthProfile, studentId?: string | string[]): Promise<FeePayment[]> {
-  const instituteId = scope(profile); const supabase = await createClient(); let query = supabase.from("fee_payments").select("id,student_id,academic_year_id,payment_date,amount,receipt_no,reference_no,remarks,status,reversal_reason,student:students(name),year:academic_years(name),mode:payment_modes(name)").eq("institute_id", instituteId).order("payment_date", { ascending: false });
+  const instituteId = scope(profile); const supabase = await createClient();
+  let query = supabase.from("fee_payments").select("id,student_id,academic_year_id,payment_date,amount,receipt_no,reference_no,remarks,status,reversal_reason,student:students(name),year:academic_years(name),mode:payment_modes(name),allocations:fee_payment_allocations!fee_payment_allocations_payment_fkey(amount,due:student_fee_dues!fee_payment_allocations_due_fkey(due_date,assignment:student_fee_assignments!student_fee_dues_assignment_fkey(head:fee_heads!student_fee_assignments_fee_head_id_fkey(name),structure_item:class_fee_structure_items!student_fee_assignments_class_fee_structure_item_id_fkey(schedule_type))))").eq("institute_id", instituteId).order("payment_date", { ascending: false });
   if (Array.isArray(studentId)) query = query.in("student_id", studentId); else if (studentId) query = query.eq("student_id", studentId);
   const { data, error } = await query; check(error);
-  return (data ?? []).map((row) => ({ id: row.id, studentId: row.student_id, academicYearId: row.academic_year_id, studentName: one(row.student)?.name ?? "STUDENT", academicYearName: one(row.year)?.name ?? "ACADEMIC YEAR", paymentModeName: one(row.mode)?.name ?? "PAYMENT MODE", paymentDate: row.payment_date, amount: Number(row.amount), receiptNo: row.receipt_no, referenceNo: row.reference_no, remarks: row.remarks, status: row.status as FeePayment["status"], reversalReason: row.reversal_reason }));
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    studentId: row.student_id,
+    academicYearId: row.academic_year_id,
+    studentName: one(row.student)?.name ?? "STUDENT",
+    academicYearName: one(row.year)?.name ?? "ACADEMIC YEAR",
+    paymentModeName: one(row.mode)?.name ?? "PAYMENT MODE",
+    paymentDate: row.payment_date,
+    amount: Number(row.amount),
+    receiptNo: row.receipt_no,
+    referenceNo: row.reference_no,
+    remarks: row.remarks,
+    status: row.status as FeePayment["status"],
+    reversalReason: row.reversal_reason,
+    allocations: (row.allocations ?? []).map((allocation) => {
+      const due = one(allocation.due); const assignment = one(due?.assignment ?? null); const head = one(assignment?.head ?? null); const structureItem = one(assignment?.structure_item ?? null);
+      return { amount: Number(allocation.amount), dueDate: due?.due_date ?? row.payment_date, feeHeadName: head?.name ?? "FEE", scheduleType: (structureItem?.schedule_type ?? null) as FeePayment["allocations"][number]["scheduleType"] };
+    }).sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.feeHeadName.localeCompare(b.feeHeadName)),
+  }));
 }
 
 export async function listSecurityDeposits(profile: AuthProfile): Promise<{ balances: SecurityDepositBalance[]; entries: SecurityDepositEntry[] }> {
