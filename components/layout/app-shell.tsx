@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
+import { PageBackButton } from "@/components/layout/page-back-button";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import type { PortalHolidayTheme } from "@/features/learning-planner/services/portal-holiday-theme-service";
 import { isAdministratorRole } from "@/lib/auth/roles";
@@ -40,7 +41,10 @@ export function AppShell({ children, instituteName, navigationItems, holidayThem
           <span className={cn("w-fit shrink-0 rounded-full px-3 py-1 text-xs font-semibold", holidayTheme.badgeClassName)}>{holidayTheme.holidayName}</span>
         </div>
       </div> : null}
-      <main className={cn("mx-auto w-full max-w-[100rem] p-4 sm:p-6 lg:p-8 xl:p-10", holidayTheme && "pt-5 sm:pt-6")}>{children}</main>
+      <main className={cn("mx-auto w-full max-w-[100rem] p-4 sm:p-6 lg:p-8 xl:p-10", holidayTheme && "pt-5 sm:pt-6")}>
+        <PageBackButton />
+        {children}
+      </main>
       <footer className={cn("border-t px-4 py-4 text-center text-xs sm:px-6", parentTheme ? "border-slate-200/80 bg-white/55 text-slate-500 backdrop-blur" : adminTheme ? "border-slate-200 bg-white/60 text-slate-500 backdrop-blur" : "text-muted-foreground")}>Learning Is Fun ERP</footer>
     </div>
   </div>;
