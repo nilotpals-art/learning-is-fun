@@ -32,19 +32,21 @@ async function sendWhatsAppTest(formData: FormData) {
     redirect("/communication/whatsapp-test?error=WhatsApp%20is%20not%20configured%20on%20the%20server.");
   }
 
+  let messageId: string;
+
   try {
     const result = await metaWhatsAppProvider.sendTemplate({
       to,
       templateName,
       languageCode,
     });
-
-    const messageId = encodeURIComponent(result.messageId);
-    redirect(`/communication/whatsapp-test?sent=1&messageId=${messageId}`);
+    messageId = result.messageId;
   } catch (error) {
     const message = encodeURIComponent(safeMessage(error));
     redirect(`/communication/whatsapp-test?error=${message}`);
   }
+
+  redirect(`/communication/whatsapp-test?sent=1&messageId=${encodeURIComponent(messageId)}`);
 }
 
 export default async function WhatsAppTestPage({
