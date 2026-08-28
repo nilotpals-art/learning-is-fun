@@ -1,9 +1,10 @@
 import {
   CalendarCheck,
   CircleDollarSign,
-  ClipboardList,
   GraduationCap,
   School,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 
 import { QuickActions } from "@/components/dashboard/quick-actions";
@@ -28,6 +29,24 @@ export function DashboardOverview({ data }: { data: AdministratorDashboardData }
       linkLabel: "Manage Students",
     },
     {
+      title: "New Students Enrolled",
+      value: data.newStudentsEnrolled.toString(),
+      description: "Admissions recorded this month",
+      icon: UserPlus,
+      tone: "emerald",
+      href: "/students",
+      linkLabel: "View Students",
+    },
+    {
+      title: "Students Left",
+      value: data.studentsLeft.toString(),
+      description: "Students currently marked Left",
+      icon: UserMinus,
+      tone: "rose",
+      href: "/students",
+      linkLabel: "View Students",
+    },
+    {
       title: "Attendance Today",
       value: data.attendanceToday.percentage === null ? "—" : `${data.attendanceToday.percentage}%`,
       description: data.attendanceToday.total ? `${data.attendanceToday.effectivePresent} of ${data.attendanceToday.total} effectively present` : "No Attendance recorded today",
@@ -39,27 +58,18 @@ export function DashboardOverview({ data }: { data: AdministratorDashboardData }
     {
       title: "Classes Today",
       value: data.classesToday.toString(),
-      description: "Non-cancelled Planner events",
+      description: "Scheduled classes from the Planner",
       icon: School,
       tone: "violet",
-      href: "/learning-planner",
-      linkLabel: "Open Planner",
-    },
-    {
-      title: "Pending Practice",
-      value: data.pendingPractice.toString(),
-      description: "Assigned or in-progress work",
-      icon: ClipboardList,
-      tone: "amber",
-      href: "/practice-work/assignments",
-      linkLabel: "View Assignments",
+      href: "/learning-planner/calendar",
+      linkLabel: "Open Calendar",
     },
     {
       title: "Outstanding Fees",
       value: currency.format(data.feeSummary.totalOutstanding),
       description: `${currency.format(data.feeSummary.collectionsToday)} collected today`,
       icon: CircleDollarSign,
-      tone: "rose",
+      tone: "amber",
       href: "/fees",
       linkLabel: "Open Fees",
     },
@@ -69,7 +79,7 @@ export function DashboardOverview({ data }: { data: AdministratorDashboardData }
     <div className="space-y-6">
       <section aria-labelledby="dashboard-summary-heading">
         <h2 id="dashboard-summary-heading" className="sr-only">Operational summary</h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           {stats.map((stat) => <StatCard key={stat.title} {...stat} />)}
         </div>
       </section>
