@@ -19,6 +19,17 @@ function formatDateLabel(value: string): string {
   return new Date(`${value}T00:00:00.000Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function indiaDate(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 function occurrenceDatesFor(schedule: ClassSchedule): string[] {
   const effectiveEnd = schedule.effectiveTo ?? schedule.academicYearEndDate;
   const start = new Date(`${schedule.effectiveFrom}T00:00:00.000Z`);
@@ -30,6 +41,12 @@ function occurrenceDatesFor(schedule: ClassSchedule): string[] {
     if (dayOfWeek === schedule.dayOfWeek) values.push(dateValue);
   }
   return values;
+}
+
+function classDateFor(schedule: ClassSchedule): string | null {
+  const dates = occurrenceDatesFor(schedule);
+  const today = indiaDate();
+  return dates.find((date) => date >= today) ?? dates.at(-1) ?? null;
 }
 
 export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
@@ -47,8 +64,9 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
 
   const openDialog = (schedule: ClassSchedule, action: "cancel" | "reschedule") => {
     const dates = occurrenceDatesFor(schedule);
+    const today = indiaDate();
     setPendingDialog({ schedule, action });
-    setOccurrenceDate(dates[0] ?? "");
+    setOccurrenceDate(dates.find((date) => date >= today) ?? dates[0] ?? "");
     setReason(""); setNewDate(""); setNewStartTime(""); setNewEndTime(""); setCancelType("final"); setWhatsappRequested(true); setError(null);
   };
 
@@ -80,9 +98,9 @@ export function ScheduleManager({ schedules }: { schedules: ClassSchedule[] }) {
       </CardHeader>
       <CardContent className="p-0">
         {schedules.length === 0 ? <p className="p-8 text-center text-muted-foreground">No recurring Class Schedules yet.</p> : <div className="divide-y border-t">
-          {schedules.map((schedule) => { const validDates = occurrenceDatesFor(schedule); return <div key={schedule.id} className="grid gap-2 px-4 py-2.5 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)_auto_auto] md:items-center">
+          {schedules.map((schedule) => { const validDates = occurrenceDatesFor(schedule); const classDate = classDateFor(schedule); return <div key={schedule.id} className="grid gap-2 px-4 py-2.5 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)_auto_auto] md:items-center">
             <div className="min-w-0"><p className="truncate text-sm font-semibold">{schedule.batchName}</p><p className="truncate text-xs text-muted-foreground">{schedule.subjectName ?? "Subject not set"}</p></div>
-            <div className="min-w-0 text-xs"><p className="font-medium">{DAYS[schedule.dayOfWeek - 1]} · {schedule.startTime}–{schedule.endTime}</p><p className="truncate text-muted-foreground">{schedule.effectiveFrom}{schedule.effectiveTo ? ` → ${schedule.effectiveTo}` : ""} · {validDates.length} occurrences</p></div>
+            <div className="min-w-0 text-xs"><p className="font-medium">{DAYS[schedule.dayOfWeek - 1]} · {schedule.startTime}–{schedule.endTime}</p><p className="truncate text-muted-foreground">Class date: {classDate ? formatDateLabel(classDate) : "No class date"} · {validDates.length} occurrences</p></div>
             <Badge className="w-fit" variant={schedule.isActive ? "secondary" : "outline"}>{schedule.isActive ? "Active" : "Inactive"}</Badge>
             <div className="flex flex-wrap gap-1.5 md:justify-end"><Button type="button" size="sm" variant="outline" onClick={() => openDialog(schedule, "cancel")}>Cancel</Button><Button type="button" size="sm" variant="outline" onClick={() => openDialog(schedule, "reschedule")}>Reschedule</Button></div>
           </div>; })}
