@@ -28,6 +28,8 @@ const INACTIVE_MESSAGE =
   "Your account is inactive. Please contact the institute administrator.";
 const OTP_ERROR_MESSAGE =
   "We could not send a verification code. Please try again.";
+const ACTIVE_SESSION_MESSAGE =
+  "This account is already logged in on another device. Please log out there before signing in here.";
 const SESSION_SECURITY_ERROR_MESSAGE =
   "We could not secure this login session. Please try again.";
 
@@ -171,15 +173,22 @@ export async function verifyOtp(input: unknown): Promise<AuthActionResult> {
       return { status: "redirect", destination: "/inactive" };
     }
 
-    const { error: sessionError } = await supabase.auth.signOut({ scope: "others" });
+    const { data: sessionClaimed, error: sessionError } = await supabase.rpc(
+      "claim_current_login_session",
+    );
 
-    if (sessionError) {
-      console.error("Authentication single-session enforcement failed", {
-        code: sessionError.code ?? "unknown",
-      });
+    if (sessionError || sessionClaimed !== true) {
+      if (sessionError) {
+        console.error("Authentication single-session claim failed", {
+          code: sessionError.code ?? "unknown",
+        });
+      }
       await supabase.auth.signOut({ scope: "local" });
       await clearPendingEmail();
-      return { status: "error", message: SESSION_SECURITY_ERROR_MESSAGE };
+      return {
+        status: "error",
+        message: sessionError ? SESSION_SECURITY_ERROR_MESSAGE : ACTIVE_SESSION_MESSAGE,
+      };
     }
 
     await clearPendingEmail();
@@ -197,11 +206,13 @@ export async function verifyOtp(input: unknown): Promise<AuthActionResult> {
 
 export async function logout(): Promise<void> {
   const supabase = await createClient();
+  await supabase.rpc("release_current_login_session");
   await supabase.auth.signOut();
 }
 
 export async function logoutAndRedirect(): Promise<never> {
   const supabase = await createClient();
+  await supabase.rpc("release_current_login_session");
   await supabase.auth.signOut();
   redirect("/login");
 }
