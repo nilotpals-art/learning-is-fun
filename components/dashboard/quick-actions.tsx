@@ -6,20 +6,20 @@ import {
   CircleDollarSign,
   GraduationCap,
   LibraryBig,
+  Link2,
   NotebookPen,
-  Sparkles,
 } from "lucide-react";
 
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import type { DashboardQuickAction } from "@/features/dashboard/types/dashboard";
 
 const actions: readonly DashboardQuickAction[] = [
+  { title: "Parent Enrollment Form", description: "Create and manage Parent enrollment links", href: "/students/enrollment-links", icon: Link2 },
   { title: "Manage Students", description: "Admissions and Student profiles", href: "/students", icon: GraduationCap },
   { title: "Take Attendance", description: "Record today’s Batch attendance", href: "/attendance", icon: CalendarCheck },
   { title: "Attendance Reports", description: "Review institute Attendance", href: "/attendance/reports", icon: BarChart3 },
   { title: "Planner Calendar", description: "View classes and events", href: "/learning-planner/calendar", icon: CalendarDays },
   { title: "Class Schedules", description: "Manage recurring schedules", href: "/learning-planner/schedules", icon: NotebookPen },
-  { title: "Generate Questions", description: "Create answer-backed Practice", href: "/practice-work/question-bank/generate", icon: Sparkles },
   { title: "Practice Sets", description: "Build and publish Practice Sets", href: "/practice-work/sets", icon: LibraryBig },
   { title: "Collect Fees", description: "Post payments and issue receipts", href: "/fees/collect", icon: CircleDollarSign },
 ];
