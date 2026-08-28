@@ -12,7 +12,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final String HOME_URL = "https://learning-is-fun-ha98.vercel.app";
+    private static final String HOME_URL = "https://www.learningisfun.net.in";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST = 1001;
@@ -42,7 +42,7 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 Uri uri = Uri.parse(url);
                 String host = uri.getHost();
-                if (host != null && (host.equals("learning-is-fun-ha98.vercel.app") || host.endsWith(".supabase.co"))) {
+                if (host != null && (host.equals("www.learningisfun.net.in") || host.equals("learningisfun.net.in") || host.endsWith(".supabase.co"))) {
                     return false;
                 }
 
