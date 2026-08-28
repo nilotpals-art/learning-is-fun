@@ -49,20 +49,26 @@ interface MetaWebhookPayload {
   entry?: MetaWebhookEntry[];
 }
 
-function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
+type SignatureCheckResult =
+  | { ok: true }
+  | { ok: false; reason: "app-secret-missing" | "signature-missing" | "signature-format" | "signature-mismatch" };
+
+function verifySignature(rawBody: Buffer, signatureHeader: string | null): SignatureCheckResult {
   const appSecret = process.env.WHATSAPP_APP_SECRET?.trim();
-  if (!appSecret || !signatureHeader?.startsWith("sha256=")) {
-    return false;
+  if (!appSecret) return { ok: false, reason: "app-secret-missing" };
+  if (!signatureHeader) return { ok: false, reason: "signature-missing" };
+
+  const match = /^sha256=([a-f0-9]{64})$/i.exec(signatureHeader.trim());
+  if (!match) return { ok: false, reason: "signature-format" };
+
+  const expected = createHmac("sha256", appSecret).update(rawBody).digest();
+  const received = Buffer.from(match[1], "hex");
+
+  if (received.length !== expected.length || !timingSafeEqual(expected, received)) {
+    return { ok: false, reason: "signature-mismatch" };
   }
 
-  const expected = createHmac("sha256", appSecret).update(rawBody).digest("hex");
-  const received = signatureHeader.slice("sha256=".length);
-
-  if (expected.length !== received.length) {
-    return false;
-  }
-
-  return timingSafeEqual(Buffer.from(expected), Buffer.from(received));
+  return { ok: true };
 }
 
 function extractStatuses(payload: MetaWebhookPayload): WhatsAppWebhookStatus[] {
@@ -112,15 +118,22 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const rawBody = await request.text();
+  const rawBody = Buffer.from(await request.arrayBuffer());
+  const signatureCheck = verifySignature(rawBody, request.headers.get("x-hub-signature-256"));
 
-  if (!verifySignature(rawBody, request.headers.get("x-hub-signature-256"))) {
+  if (!signatureCheck.ok) {
+    console.warn("WhatsApp webhook signature rejected", {
+      reason: signatureCheck.reason,
+      hasSignatureHeader: request.headers.has("x-hub-signature-256"),
+      hasConfiguredAppSecret: Boolean(process.env.WHATSAPP_APP_SECRET?.trim()),
+      bodyBytes: rawBody.length,
+    });
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
   }
 
   let payload: MetaWebhookPayload;
   try {
-    payload = JSON.parse(rawBody) as MetaWebhookPayload;
+    payload = JSON.parse(rawBody.toString("utf8")) as MetaWebhookPayload;
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
