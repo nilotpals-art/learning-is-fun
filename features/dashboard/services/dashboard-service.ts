@@ -5,7 +5,7 @@ import type {
   AdministratorDashboardData,
   DashboardActivity,
 } from "@/features/dashboard/types/dashboard";
-import { listScheduleEvents } from "@/features/learning-planner/services/event-service";
+import { listCalendarReadModel } from "@/features/learning-planner/services/calendar-projection-service";
 import { createClient } from "@/lib/supabase/server";
 
 interface AttendanceActivityRow {
@@ -68,13 +68,16 @@ export async function getAdministratorDashboard(
   const scope = instituteId(profile);
   const supabase = await createClient();
   const today = indiaDate();
+  const monthStart = `${today.slice(0, 7)}-01`;
   const rangeEnd = new Date();
   rangeEnd.setDate(rangeEnd.getDate() + 14);
+  const rangeEndDate = indiaDate(rangeEnd);
 
   const [
     students,
+    newStudents,
+    studentsLeft,
     attendance,
-    pendingPractice,
     feeSummary,
     events,
     recentStudents,
@@ -84,10 +87,11 @@ export async function getAdministratorDashboard(
     recentFees,
   ] = await Promise.all([
     supabase.from("students").select("id", { count: "exact", head: true }).eq("institute_id", scope).eq("status", "Active"),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("institute_id", scope).gte("admission_date", monthStart).lte("admission_date", today),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("institute_id", scope).eq("status", "Left"),
     supabase.from("student_attendance").select("status").eq("institute_id", scope).eq("attendance_date", today),
-    supabase.from("practice_assignments").select("id", { count: "exact", head: true }).eq("institute_id", scope).in("status", ["assigned", "in_progress"]),
     supabase.rpc("fee_dashboard_summary"),
-    listScheduleEvents(profile, { dateFrom: today, dateTo: indiaDate(rangeEnd) }),
+    listCalendarReadModel(profile, today, rangeEndDate),
     supabase.from("students").select("id,name,created_at").eq("institute_id", scope).order("created_at", { ascending: false }).limit(4),
     supabase.from("student_attendance").select("id,attendance_date,status,updated_at,student:students!student_attendance_student_id_fkey(name)").eq("institute_id", scope).order("updated_at", { ascending: false }).limit(4),
     supabase.from("schedule_changes").select("id,change_type,changed_at,event:schedule_events!schedule_changes_event_fkey!inner(id,institute_id,title,event_date)").eq("event.institute_id", scope).order("changed_at", { ascending: false }).limit(4),
@@ -95,7 +99,7 @@ export async function getAdministratorDashboard(
     supabase.from("fee_payments").select("id,receipt_no,status,amount,created_at,student:students(name)").eq("institute_id", scope).order("created_at", { ascending: false }).limit(4),
   ]);
 
-  const queryError = students.error ?? attendance.error ?? pendingPractice.error ?? feeSummary.error ?? recentStudents.error ?? recentAttendance.error ?? recentSchedule.error ?? recentPractice.error ?? recentFees.error;
+  const queryError = students.error ?? newStudents.error ?? studentsLeft.error ?? attendance.error ?? feeSummary.error ?? recentStudents.error ?? recentAttendance.error ?? recentSchedule.error ?? recentPractice.error ?? recentFees.error;
   if (queryError) throw queryError;
 
   const activities: DashboardActivity[] = [];
@@ -145,17 +149,22 @@ export async function getAdministratorDashboard(
 
   const attendanceRows = attendance.data ?? [];
   const effectivePresent = attendanceRows.filter((row) => row.status === "Present" || row.status === "Late").length;
-  const todayEvents = events.filter((event) => event.eventDate === today && event.status !== "cancelled");
+  const todayClasses = events.filter((event) =>
+    event.eventDate === today &&
+    event.status !== "cancelled" &&
+    ["regular_class", "extra_class", "special_class"].includes(event.scheduleType)
+  );
 
   return {
     activeStudents: students.count ?? 0,
+    newStudentsEnrolled: newStudents.count ?? 0,
+    studentsLeft: studentsLeft.count ?? 0,
     attendanceToday: {
       total: attendanceRows.length,
       effectivePresent,
       percentage: attendanceRows.length ? Math.round((effectivePresent * 1000) / attendanceRows.length) / 10 : null,
     },
-    classesToday: todayEvents.length,
-    pendingPractice: pendingPractice.count ?? 0,
+    classesToday: todayClasses.length,
     feeSummary: {
       totalOutstanding: Number((feeSummary.data as { totalOutstanding?: number } | null)?.totalOutstanding ?? 0),
       collectionsToday: Number((feeSummary.data as { collectionsToday?: number } | null)?.collectionsToday ?? 0),
