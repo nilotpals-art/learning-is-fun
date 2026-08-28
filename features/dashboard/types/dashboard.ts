@@ -39,13 +39,14 @@ export interface DashboardActivity {
 
 export interface AdministratorDashboardData {
   activeStudents: number;
+  newStudentsEnrolled: number;
+  studentsLeft: number;
   attendanceToday: {
     total: number;
     effectivePresent: number;
     percentage: number | null;
   };
   classesToday: number;
-  pendingPractice: number;
   feeSummary: {
     totalOutstanding: number;
     collectionsToday: number;
