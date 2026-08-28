@@ -159,20 +159,10 @@ export async function verifyOtp(input: unknown): Promise<AuthActionResult> {
       };
     }
 
-    const profile = await getCurrentProfile();
-
-    if (!profile) {
-      await supabase.auth.signOut({ scope: "local" });
-      await clearPendingEmail();
-      return { status: "redirect", destination: "/unauthorized" };
-    }
-
-    if (!profile.isActive) {
-      await supabase.auth.signOut({ scope: "local" });
-      await clearPendingEmail();
-      return { status: "redirect", destination: "/inactive" };
-    }
-
+    // Claim the newly verified Supabase session before loading the application
+    // profile. getCurrentProfile intentionally rejects sessions that have not
+    // yet been claimed, so doing this in the opposite order makes every fresh
+    // OTP login look unauthorized.
     const { data: sessionClaimed, error: sessionError } = await supabase.rpc(
       "claim_current_login_session",
     );
@@ -189,6 +179,22 @@ export async function verifyOtp(input: unknown): Promise<AuthActionResult> {
         status: "error",
         message: sessionError ? SESSION_SECURITY_ERROR_MESSAGE : ACTIVE_SESSION_MESSAGE,
       };
+    }
+
+    const profile = await getCurrentProfile();
+
+    if (!profile) {
+      await supabase.rpc("release_current_login_session");
+      await supabase.auth.signOut({ scope: "local" });
+      await clearPendingEmail();
+      return { status: "redirect", destination: "/unauthorized" };
+    }
+
+    if (!profile.isActive) {
+      await supabase.rpc("release_current_login_session");
+      await supabase.auth.signOut({ scope: "local" });
+      await clearPendingEmail();
+      return { status: "redirect", destination: "/inactive" };
     }
 
     await clearPendingEmail();
