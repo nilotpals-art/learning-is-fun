@@ -27,7 +27,7 @@ export async function sendWhatsAppTemplate(input: WhatsAppTemplateInput): Promis
   if (!accessToken || !phoneNumberId) return { status: "not_configured", errorCode: "PROVIDER_NOT_CONFIGURED" };
 
   const graphVersion = process.env.WHATSAPP_GRAPH_API_VERSION || "v25.0";
-  const languageCode = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "en";
+  const languageCode = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "en_US";
   try {
     const response = await fetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`, {
       method: "POST",
