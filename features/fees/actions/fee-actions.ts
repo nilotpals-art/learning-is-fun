@@ -73,12 +73,13 @@ export async function postFeePayment(input: unknown): Promise<FeeActionResult<{ 
   const profile = await admin(); const supabase = await createClient(); const v = parsed.data;
   const { data, error } = await supabase.rpc("post_fee_payment", { p_student_id: v.studentId, p_academic_year_id: v.academicYearId, p_payment_mode_id: v.paymentModeId, p_payment_date: v.paymentDate, p_reference_no: v.referenceNo, p_remarks: v.remarks, p_allocations: v.allocations.map((x) => ({ due_id: x.dueId, amount: x.amount })) });
   if (error) return errorResult(error);
-  const result = data as { paymentId: string; receiptNo: string; amount?: number };
+  const result = data as { paymentId: string; receiptNo: string; amount?: number; whatsappStatus?: string };
   const deliveryNotes: string[] = [];
   if (v.receiptDelivery === "whatsapp" || v.receiptDelivery === "both") {
-    const { data: whatsAppStatus, error: whatsAppError } = await supabase.rpc("fee_queue_confirmation", { p_payment_id: result.paymentId, p_institute_id: profile.instituteId, p_student_id: v.studentId, p_initiated_by: profile.id });
-    if (whatsAppError || whatsAppStatus === "no_recipient") deliveryNotes.push("WhatsApp receipt could not be queued because no eligible mobile number was found.");
-    else deliveryNotes.push("WhatsApp receipt queued.");
+    if (result.whatsappStatus === "queued") deliveryNotes.push("WhatsApp receipt queued.");
+    else if (result.whatsappStatus === "disabled") deliveryNotes.push("WhatsApp payment confirmations are disabled in Fee Settings.");
+    else if (result.whatsappStatus === "no_recipient") deliveryNotes.push("WhatsApp receipt could not be queued because no eligible mobile number was found.");
+    else deliveryNotes.push("WhatsApp receipt could not be queued.");
   }
   if (v.receiptDelivery === "email" || v.receiptDelivery === "both") {
     const emailStatus = await sendReceiptEmail({ instituteId: profile.instituteId!, instituteName: profile.instituteName, studentId: v.studentId, paymentId: result.paymentId, receiptNo: result.receiptNo, paymentDate: v.paymentDate, amount: Number(result.amount ?? v.allocations.reduce((sum, item) => sum + item.amount, 0)), paymentModeId: v.paymentModeId, referenceNo: v.referenceNo, allocations: v.allocations });
