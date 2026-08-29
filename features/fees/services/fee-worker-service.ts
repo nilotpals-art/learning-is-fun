@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 import { sendWhatsAppTemplate } from "@/features/fees/services/whatsapp-service";
+import { WHATSAPP_TEMPLATES } from "@/features/whatsapp/templates";
 
 function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,10 +14,26 @@ function serviceClient() {
 
 const one = <T>(value: T | T[] | null): T | null => !value ? null : Array.isArray(value) ? value[0] ?? null : value;
 const isoDate = (value: Date) => value.toISOString().slice(0, 10);
+const displayDate = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(`${value}T00:00:00+05:30`)).toUpperCase();
+const displayMonth = (value: string) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(`${value}T00:00:00+05:30`)).toUpperCase();
+
+function templateNameFor(messageType: string, storedName: string | null): string {
+  if (messageType === "fee_reminder") return WHATSAPP_TEMPLATES.feesPaymentReminder.name;
+  if (messageType === "payment_confirmation") return WHATSAPP_TEMPLATES.feesPaymentConfirmation.name;
+  if (messageType === "fee_receipt") return WHATSAPP_TEMPLATES.feesReceipt.name;
+  return storedName ?? "";
+}
 
 function templateParameterOrder(messageType: string, values: Record<string, unknown>): Array<string | number | null | undefined> {
-  if (messageType === "fee_reminder") return [values.student_name, values.fee_head, values.due_date, values.outstanding_amount, values.institute_name] as Array<string | number | null | undefined>;
-  if (messageType === "payment_confirmation") return [values.student_name, values.receipt_no, values.payment_date, values.amount, values.payment_mode, values.reference_no, values.remaining_outstanding, values.institute_name] as Array<string | number | null | undefined>;
+  if (messageType === "fee_reminder") {
+    return [values.outstanding_amount, values.student_name, values.fee_month, values.fee_head, values.due_date] as Array<string | number | null | undefined>;
+  }
+  if (messageType === "payment_confirmation") {
+    return [values.amount, values.student_name, values.fee_month, values.fee_head, values.receipt_no, values.payment_date, values.payment_mode] as Array<string | number | null | undefined>;
+  }
+  if (messageType === "fee_receipt") {
+    return [values.student_name, values.receipt_no, values.amount, values.fee_month, values.fee_head, values.payment_date, values.payment_mode] as Array<string | number | null | undefined>;
+  }
   return Object.values(values).map((value) => value == null || typeof value === "string" || typeof value === "number" ? value as string | number | null | undefined : JSON.stringify(value));
 }
 
@@ -47,12 +64,12 @@ async function chooseRecipient(supabase: ReturnType<typeof serviceClient>, insti
 
 export async function queueScheduledPendingFeeReminders(asOf = new Date()): Promise<number> {
   const supabase = serviceClient();
-  const { data: settingsRows, error: settingsError } = await supabase.from("fee_settings").select("institute_id,reminder_after_due_days,repeat_every_days,max_reminders_per_due,recipient_preference,reminder_template_name").eq("whatsapp_fee_reminders_enabled", true);
+  const { data: settingsRows, error: settingsError } = await supabase.from("fee_settings").select("institute_id,reminder_after_due_days,repeat_every_days,max_reminders_per_due,recipient_preference").eq("whatsapp_fee_reminders_enabled", true);
   if (settingsError) throw settingsError;
   let queued = 0;
   for (const settings of settingsRows ?? []) {
     const cutoff = new Date(asOf); cutoff.setUTCDate(cutoff.getUTCDate() - Number(settings.reminder_after_due_days ?? 0));
-    const { data: dues, error: duesError } = await supabase.from("student_fee_dues").select("id,student_id,due_date,net_amount,fee_head:fee_heads(name),institute:institutes(name)").eq("institute_id", settings.institute_id).in("status", ["due", "partially_paid"]).lte("due_date", isoDate(cutoff));
+    const { data: dues, error: duesError } = await supabase.from("student_fee_dues").select("id,student_id,due_date,net_amount,fee_head:fee_heads(name)").eq("institute_id", settings.institute_id).in("status", ["due", "partially_paid"]).lte("due_date", isoDate(cutoff));
     if (duesError) throw duesError;
     for (const due of dues ?? []) {
       const outstanding = await outstandingForDue(supabase, settings.institute_id, due.id, Number(due.net_amount));
@@ -69,7 +86,26 @@ export async function queueScheduledPendingFeeReminders(asOf = new Date()): Prom
       const recipient = await chooseRecipient(supabase, settings.institute_id, due.student_id, settings.recipient_preference);
       if (!recipient) continue;
       const idempotencyKey = `scheduled_reminder:${due.id}:${isoDate(asOf)}:${recipient.type}`;
-      const { error: insertError } = await supabase.from("fee_message_outbox").upsert({ institute_id: settings.institute_id, student_id: due.student_id, parent_id: recipient.parentId, student_fee_due_id: due.id, message_type: "fee_reminder", recipient_type: recipient.type, recipient_phone: recipient.phone, template_name: settings.reminder_template_name, template_parameters: { student_name: recipient.studentName, fee_head: one(due.fee_head)?.name ?? "Fee", due_date: due.due_date, outstanding_amount: outstanding, institute_name: one(due.institute)?.name ?? "Institute" }, idempotency_key: idempotencyKey, scheduled_for: asOf.toISOString(), status: "queued" }, { onConflict: "institute_id,idempotency_key", ignoreDuplicates: true });
+      const { error: insertError } = await supabase.from("fee_message_outbox").upsert({
+        institute_id: settings.institute_id,
+        student_id: due.student_id,
+        parent_id: recipient.parentId,
+        student_fee_due_id: due.id,
+        message_type: "fee_reminder",
+        recipient_type: recipient.type,
+        recipient_phone: recipient.phone,
+        template_name: WHATSAPP_TEMPLATES.feesPaymentReminder.name,
+        template_parameters: {
+          outstanding_amount: outstanding,
+          student_name: recipient.studentName,
+          fee_month: displayMonth(due.due_date),
+          fee_head: one(due.fee_head)?.name ?? "Fee",
+          due_date: displayDate(due.due_date),
+        },
+        idempotency_key: idempotencyKey,
+        scheduled_for: asOf.toISOString(),
+        status: "queued",
+      }, { onConflict: "institute_id,idempotency_key", ignoreDuplicates: true });
       if (insertError) throw insertError;
       queued += 1;
     }
@@ -83,11 +119,12 @@ export async function deliverFeeWhatsAppOutbox(limit = 50): Promise<{ sent: numb
   if (error) throw error;
   let sent = 0, failed = 0, skipped = 0;
   for (const message of messages ?? []) {
-    if (!message.recipient_phone || !message.template_name) { skipped += 1; continue; }
+    const templateName = templateNameFor(message.message_type, message.template_name);
+    if (!message.recipient_phone || !templateName) { skipped += 1; continue; }
     const claimed = await supabase.from("fee_message_outbox").update({ status: "processing", updated_at: new Date().toISOString() }).eq("id", message.id).in("status", ["queued", "failed"]).select("id").maybeSingle();
     if (claimed.error || !claimed.data) { skipped += 1; continue; }
     const values = (message.template_parameters ?? {}) as Record<string, unknown>;
-    const result = await sendWhatsAppTemplate({ to: message.recipient_phone, templateName: message.template_name, parameters: templateParameterOrder(message.message_type, values) });
+    const result = await sendWhatsAppTemplate({ to: message.recipient_phone, templateName, parameters: templateParameterOrder(message.message_type, values) });
     if (result.status === "sent") {
       const { error: updateError } = await supabase.from("fee_message_outbox").update({ status: "sent", attempt_count: Number(message.attempt_count) + 1, provider_message_id: result.providerMessageId ?? null, last_error_code: null, last_error_message: null, sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", message.id);
       if (updateError) throw updateError; sent += 1;
