@@ -17,6 +17,10 @@ export const WHATSAPP_TEMPLATES = {
     name: "student_left",
     parameters: ["student_name", "admission_no"],
   },
+  studentAbsent: {
+    name: "student_absent",
+    parameters: ["student_name", "attendance_date", "batch_name"],
+  },
   feesPaymentConfirmation: {
     name: "fees_payment_confirmation",
     parameters: [
