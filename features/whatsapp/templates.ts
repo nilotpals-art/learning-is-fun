@@ -13,6 +13,10 @@ export const WHATSAPP_TEMPLATES = {
     name: "student_batch_assignment",
     parameters: ["student_name", "batch_name", "academic_year"],
   },
+  studentLeft: {
+    name: "student_left",
+    parameters: ["student_name", "admission_no"],
+  },
   feesPaymentConfirmation: {
     name: "fees_payment_confirmation",
     parameters: [
