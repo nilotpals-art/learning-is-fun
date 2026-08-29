@@ -1,5 +1,7 @@
 import "server-only";
 
+import { WHATSAPP_TEMPLATE_LANGUAGE } from "@/features/whatsapp/templates";
+
 export interface WhatsAppDeliveryResult {
   status: "sent" | "not_configured" | "failed";
   providerMessageId?: string;
@@ -28,7 +30,7 @@ export async function sendWhatsAppTemplate(input: WhatsAppTemplateInput): Promis
   if (!accessToken || !phoneNumberId) return { status: "not_configured", errorCode: "PROVIDER_NOT_CONFIGURED" };
 
   const graphVersion = process.env.WHATSAPP_GRAPH_API_VERSION || "v25.0";
-  const languageCode = process.env.WHATSAPP_TEMPLATE_LANGUAGE || "en_US";
+  const languageCode = WHATSAPP_TEMPLATE_LANGUAGE;
   try {
     const response = await fetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`, {
       method: "POST",
