@@ -37,8 +37,6 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
   try {
     const result = await changeStudentAssignment(parsed.data);
 
-    // A student who had previously left can rejoin without losing any historical records.
-    // Creating a new Current assignment reactivates only the Student Master status.
     const supabase = await createClient();
     const { error: reactivateError } = await supabase
       .from("students")
@@ -48,9 +46,6 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
       .eq("status", "Left");
     if (reactivateError) throw reactivateError;
 
-    // Academic assignment/promotion is the existing-student equivalent of admission.
-    // Apply the active fee structure for the selected Academic Year + Class so annual fee changes
-    // flow to promoted/existing students without re-entering fees manually.
     try {
       const structure = await findFeeStructure(profile, parsed.data.academicYearId, parsed.data.classId);
       if (structure) {
@@ -71,8 +66,10 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
       });
     }
 
-    // WhatsApp delivery is deliberately optional and post-commit.
-    if (parsed.data.notifyByWhatsApp) {
+    const automaticWhatsApp = parsed.data.promotionType === "Batch Transfer" || parsed.data.promotionType === "Readmission";
+    const shouldNotifyByWhatsApp = parsed.data.notifyByWhatsApp || automaticWhatsApp;
+
+    if (shouldNotifyByWhatsApp) {
       try {
         const [studentResult, batchResult, yearResult, parentLinksResult] = await Promise.all([
           supabase.from("students").select("name").eq("institute_id", profile.instituteId).eq("id", parsed.data.studentId).maybeSingle(),
@@ -111,7 +108,7 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
     return {
       status: "success",
       assignmentId: result.assignmentId,
-      message: parsed.data.notifyByWhatsApp ? `${baseMessage} WhatsApp notification requested.` : `${baseMessage} WhatsApp notification skipped.`,
+      message: shouldNotifyByWhatsApp ? `${baseMessage} WhatsApp notification requested.` : `${baseMessage} WhatsApp notification skipped.`,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
