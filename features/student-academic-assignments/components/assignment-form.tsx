@@ -27,13 +27,13 @@ export function AssignmentForm({ open, studentId, current, options, onOpenChange
   const currentAcademicYearId = options.academicYears.find((year) => year.isCurrent)?.id ?? options.academicYears[0]?.id ?? "";
   const form = useForm<StudentAssignmentValues>({ resolver: zodResolver(studentAssignmentSchema), defaultValues: {
     studentId: "", academicYearId: currentAcademicYearId, schoolId: "", boardId: "", classId: "", batchId: "",
-    effectiveFrom: new Date().toISOString().slice(0, 10), promotionType: "New Admission", remarks: "",
+    effectiveFrom: new Date().toISOString().slice(0, 10), promotionType: "New Admission", remarks: "", notifyByWhatsApp: true,
   }});
   useEffect(() => { if (!open) return; form.reset({
     studentId: studentId ?? current?.studentId ?? "", academicYearId: current?.academicYearId ?? currentAcademicYearId,
     schoolId: current?.schoolId ?? "", boardId: current?.boardId ?? "", classId: current?.classId ?? "",
     batchId: "", effectiveFrom: new Date().toISOString().slice(0, 10),
-    promotionType: current ? "Batch Transfer" : "New Admission", remarks: "",
+    promotionType: current ? "Batch Transfer" : "New Admission", remarks: "", notifyByWhatsApp: true,
   }); }, [current, currentAcademicYearId, form, open, studentId]);
   const academicYearId = useWatch({ control: form.control, name: "academicYearId" });
   const schoolId = useWatch({ control: form.control, name: "schoolId" });
@@ -57,6 +57,10 @@ export function AssignmentForm({ open, studentId, current, options, onOpenChange
     <Field label="Effective From" error={errors.effectiveFrom?.message}><Input type="date" disabled={pending} {...form.register("effectiveFrom")} /></Field>
     <Field label="Promotion Type" error={errors.promotionType?.message}><select className={controlClass} disabled={pending} {...form.register("promotionType")}>{PROMOTION_TYPES.map((x) => <option key={x}>{x}</option>)}</select></Field>
     <div className="space-y-2 sm:col-span-2"><label className="text-sm font-semibold">Remarks</label><textarea className={`${controlClass} min-h-24 py-2`} disabled={pending} {...form.register("remarks")} />{errors.remarks?.message ? <p className="text-sm text-destructive">{errors.remarks.message}</p> : null}</div>
+    <label className="flex items-start gap-3 rounded-xl border border-input bg-card p-4 sm:col-span-2">
+      <input type="checkbox" className="mt-1 h-4 w-4" disabled={pending} {...form.register("notifyByWhatsApp")} />
+      <span><span className="block text-sm font-semibold">Notify by WhatsApp</span><span className="block text-sm text-muted-foreground">Send the approved batch-assignment message to the active linked parent WhatsApp number(s). This is selected by default.</span></span>
+    </label>
     {errors.root?.message ? <p className="text-sm text-destructive sm:col-span-2" role="alert">{errors.root.message}</p> : null}
   </form><DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button><Button type="submit" form="assignment-form" disabled={pending}>{pending ? "Saving…" : current ? "Change Assignment" : "Assign Student"}</Button></DialogFooter></DialogContent></Dialog>;
 }
