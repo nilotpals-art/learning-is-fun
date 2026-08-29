@@ -24,3 +24,8 @@ export async function deleteQueuedFeeMessagesForStudent(studentId: string) {
     message: count > 0 ? `${count} queued message${count === 1 ? "" : "s"} deleted.` : "No queued messages found for this student.",
   };
 }
+
+export async function deleteQueuedFeeMessagesFormAction(formData: FormData): Promise<void> {
+  const studentId = String(formData.get("studentId") ?? "");
+  await deleteQueuedFeeMessagesForStudent(studentId);
+}
