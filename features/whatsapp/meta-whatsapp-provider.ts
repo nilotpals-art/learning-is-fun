@@ -87,7 +87,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
         type: "template",
         template: {
           name: input.templateName,
-          language: { code: input.languageCode ?? "en_US" },
+          language: { code: input.languageCode ?? "en" },
           ...(input.components && input.components.length > 0
             ? { components: input.components }
             : {}),
