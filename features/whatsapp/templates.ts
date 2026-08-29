@@ -1,4 +1,4 @@
-export const WHATSAPP_TEMPLATE_LANGUAGE = "en_US" as const;
+export const WHATSAPP_TEMPLATE_LANGUAGE = "en" as const;
 
 export const WHATSAPP_TEMPLATES = {
   parentEnrollmentLink: {
