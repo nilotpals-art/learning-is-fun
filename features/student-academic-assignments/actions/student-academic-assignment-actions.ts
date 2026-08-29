@@ -8,6 +8,7 @@ import { changeStudentAssignment, createOrReuseSchool } from "@/features/student
 import type { AssignmentActionResult } from "@/features/student-academic-assignments/types/student-academic-assignment";
 import { studentAssignmentSchema } from "@/features/student-academic-assignments/validations/student-academic-assignment-schema";
 import { createSchoolSchema } from "@/features/student-academic-assignments/validations/school-schema";
+import { sendApprovedWhatsAppTemplate } from "@/features/whatsapp/template-delivery-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -23,6 +24,10 @@ const errors: Record<string, string> = {
   STUDENT_ASSIGNMENT_OVERLAP: "This assignment overlaps existing Student academic history.",
   STUDENT_ASSIGNMENT_CURRENT_CONFLICT: "The Student already has a Current assignment.",
 };
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return !value ? null : Array.isArray(value) ? value[0] ?? null : value;
+}
 
 export async function saveStudentAssignment(input: unknown): Promise<AssignmentActionResult> {
   const parsed = studentAssignmentSchema.safeParse(input);
@@ -63,6 +68,34 @@ export async function saveStudentAssignment(input: unknown): Promise<AssignmentA
         academicYearId: parsed.data.academicYearId,
         classId: parsed.data.classId,
         error: feeError instanceof Error ? feeError.message : "unknown",
+      });
+    }
+
+    // WhatsApp delivery is intentionally post-commit: a Meta failure must never undo the assignment.
+    try {
+      const [studentResult, batchResult, yearResult, parentLinksResult] = await Promise.all([
+        supabase.from("students").select("name").eq("institute_id", profile.instituteId).eq("id", parsed.data.studentId).maybeSingle(),
+        supabase.from("batches").select("name").eq("institute_id", profile.instituteId).eq("id", parsed.data.batchId).maybeSingle(),
+        supabase.from("academic_years").select("name").eq("institute_id", profile.instituteId).eq("id", parsed.data.academicYearId).maybeSingle(),
+        supabase.from("student_parent_links").select("parent:parents!student_parent_links_parent_fkey(mobile,is_active)").eq("institute_id", profile.instituteId).eq("student_id", parsed.data.studentId),
+      ]);
+      if (studentResult.error || batchResult.error || yearResult.error || parentLinksResult.error) throw new Error("ASSIGNMENT_WHATSAPP_CONTACT_LOOKUP_FAILED");
+      const studentName = studentResult.data?.name ?? "Student";
+      const batchName = batchResult.data?.name ?? "Batch";
+      const academicYear = yearResult.data?.name ?? "Academic Year";
+      const phones = new Set<string>();
+      for (const link of parentLinksResult.data ?? []) {
+        const parent = one(link.parent);
+        if (parent?.is_active && parent.mobile?.trim()) phones.add(parent.mobile.trim());
+      }
+      for (const phone of phones) {
+        const delivery = await sendApprovedWhatsAppTemplate(phone, "studentBatchAssignment", [studentName, batchName, academicYear]);
+        if (delivery.status === "failed") console.error("Academic assignment saved but WhatsApp delivery failed", { studentId: parsed.data.studentId, error: delivery.error });
+      }
+    } catch (whatsappError) {
+      console.error("Academic assignment saved but WhatsApp notification was skipped", {
+        studentId: parsed.data.studentId,
+        error: whatsappError instanceof Error ? whatsappError.message : "unknown",
       });
     }
 
