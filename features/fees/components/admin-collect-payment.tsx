@@ -44,6 +44,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
     }
 
     start(async () => {
+      const selectedDelivery = receiptDelivery;
       const result = await postFeePayment({
         studentId,
         academicYearId: yearId,
@@ -51,7 +52,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
         paymentDate: new Date(`${paymentDate}T12:00:00+05:30`).toISOString(),
         referenceNo: referenceNo || null,
         remarks: remarks || null,
-        receiptDelivery,
+        receiptDelivery: selectedDelivery,
         allocations: eligible
           .map((due) => ({ dueId: due.id, amount: Number(amounts[due.id] ?? 0) }))
           .filter((allocation) => allocation.amount > 0),
@@ -62,7 +63,26 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
         description: result.message,
         type: result.status === "success" ? "success" : "error",
       });
+
       if (result.status === "success") {
+        if ((selectedDelivery === "whatsapp" || selectedDelivery === "both") && result.data?.paymentId) {
+          try {
+            const response = await fetch("/api/fees/whatsapp/payment-confirmation", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ paymentId: result.data.paymentId }),
+            });
+            const delivery = await response.json() as { ok?: boolean; sent?: number; failed?: number };
+            if (response.ok && delivery.sent && delivery.sent > 0) {
+              toast.add({ title: "WhatsApp sent", description: "Fee payment confirmation was sent immediately.", type: "success" });
+            } else if (delivery.failed && delivery.failed > 0) {
+              toast.add({ title: "WhatsApp not delivered", description: "The confirmation could not be sent. It remains in the outbox for retry.", type: "error" });
+            }
+          } catch {
+            toast.add({ title: "WhatsApp pending", description: "Immediate delivery could not be completed. The queued confirmation remains available for retry.", type: "error" });
+          }
+        }
+
         setAmounts({});
         setReferenceNo("");
         setRemarks("");
@@ -87,7 +107,7 @@ export function AdminCollectPayment({ students, years, modes, dues, settings }: 
               <label className="grid gap-2 text-sm">Payment Date<Input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} required /></label>
               <label className="grid gap-2 text-sm">Reference / Transaction No. <span className="text-xs text-muted-foreground">Optional</span><Input value={referenceNo} onChange={(event) => setReferenceNo(event.target.value)} /></label>
               <label className="grid gap-2 text-sm">Remarks <span className="text-xs text-muted-foreground">Optional</span><Input value={remarks} onChange={(event) => setRemarks(event.target.value)} /></label>
-              <label className="grid gap-2 text-sm md:col-span-3">Send Paid Receipt<select className={select} value={receiptDelivery} onChange={(event) => setReceiptDelivery(event.target.value as ReceiptDelivery)}><option value="none">Don&apos;t Send</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="both">WhatsApp + Email</option></select><span className="text-xs text-muted-foreground">Email is sent to available Student/Parent email addresses. WhatsApp follows the configured fee recipient preference.</span></label>
+              <label className="grid gap-2 text-sm md:col-span-3">Send Paid Receipt<select className={select} value={receiptDelivery} onChange={(event) => setReceiptDelivery(event.target.value as ReceiptDelivery)}><option value="none">Don&apos;t Send</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="both">WhatsApp + Email</option></select><span className="text-xs text-muted-foreground">Email is sent to available Student/Parent email addresses. WhatsApp payment confirmation is sent immediately using the configured fee recipient preference.</span></label>
             </div>
 
             {eligible.map((due) => (
