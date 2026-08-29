@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { deliverPaymentConfirmationImmediately } from "@/features/fees/services/fee-worker-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +27,19 @@ export async function sendVerifiedFeeReceipt(input:{paymentId:string;channel:"wh
  const paymentFor=items.map(x=>x.label).join(", ")||"Fee Payment";
  const notes:string[]=[];
  if(input.channel==="whatsapp"||input.channel==="both"){
-   if(!parent.mobile)notes.push("Parent WhatsApp number is unavailable."); else {const {data,error:e}=await sb.rpc("fee_queue_confirmation",{p_payment_id:p.id,p_institute_id:profile.instituteId,p_student_id:p.student_id,p_initiated_by:profile.id});notes.push(e?"WhatsApp could not be queued.":data==="queued"?"WhatsApp receipt queued to parent.":data==="already_queued"?"WhatsApp receipt was already queued.":"Parent WhatsApp number is unavailable.")}
+   if(!parent.mobile)notes.push("Parent WhatsApp number is unavailable."); else {
+     const {data,error:e}=await sb.rpc("fee_queue_confirmation",{p_payment_id:p.id,p_institute_id:profile.instituteId,p_student_id:p.student_id,p_initiated_by:profile.id});
+     if(e){console.error("Fee WhatsApp confirmation preparation failed",{code:e.code});notes.push("WhatsApp confirmation could not be prepared.");}
+     else if(data!=="queued"&&data!=="already_queued"){notes.push("Parent WhatsApp number is unavailable.");}
+     else {
+       try{
+         const delivery=await deliverPaymentConfirmationImmediately(p.id,profile.instituteId);
+         if(delivery.sent>0)notes.push("WhatsApp receipt sent to parent.");
+         else if(data==="already_queued"&&delivery.failed===0&&delivery.skipped===0)notes.push("WhatsApp receipt was already sent.");
+         else notes.push("WhatsApp receipt could not be sent immediately.");
+       }catch(err){console.error("Immediate fee WhatsApp delivery failed",err);notes.push("WhatsApp receipt could not be sent immediately.");}
+     }
+   }
  }
  if(input.channel==="email"||input.channel==="both"){
    const key=process.env.BREVO_API_KEY;const from=process.env.BREVO_SENDER_EMAIL??process.env.BREVO_FROM_EMAIL??process.env.EMAIL_FROM;
