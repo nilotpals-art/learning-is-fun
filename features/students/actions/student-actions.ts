@@ -7,6 +7,7 @@ import {
   provisionParentIdentity,
   provisionStudentIdentity,
 } from "@/features/auth/services/user-provisioning-service";
+import { applyFeeStructure, findFeeStructure } from "@/features/fees/services/fee-structure-service";
 import { resolveParentByEmail } from "@/features/students/services/parent-resolution-service";
 import {
   compensateAdmissionFoundation,
@@ -26,10 +27,10 @@ import {
   studentEditSchema,
   studentIdSchema,
 } from "@/features/students/validations/student-schema";
+import { sendApprovedWhatsAppTemplate } from "@/features/whatsapp/template-delivery-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 import { deleteManagedAuthUser, updateManagedAuthUserEmail } from "@/lib/supabase/admin";
-import { applyFeeStructure, findFeeStructure } from "@/features/fees/services/fee-structure-service";
 
 const PATH = "/students";
 
@@ -247,6 +248,23 @@ export async function updateStudent(idInput: unknown, input: unknown): Promise<S
       });
       if (provisioned.status !== "created" && provisioned.status !== "reused") {
         return saveError("Parent details were saved, but Parent Portal login could not be created. Review the Parent email and try again.");
+      }
+    }
+
+    if (current.status !== "Left" && values.data.status === "Left") {
+      try {
+        const phone = values.data.parentMobile || current.parentMobile;
+        if (phone?.trim()) {
+          const delivery = await sendApprovedWhatsAppTemplate(phone.trim(), "studentLeft", [current.name, current.admissionNumber]);
+          if (delivery.status === "failed") {
+            console.error("Student marked Left but WhatsApp delivery failed", { studentId: id.data, error: delivery.error });
+          }
+        }
+      } catch (whatsappError) {
+        console.error("Student marked Left but WhatsApp notification was skipped", {
+          studentId: id.data,
+          error: whatsappError instanceof Error ? whatsappError.message : "unknown",
+        });
       }
     }
 
