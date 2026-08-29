@@ -29,7 +29,8 @@ function getConfig() {
 }
 
 function normalizeRecipientPhone(value: string): string {
-  const normalized = value.replace(/[^0-9]/g, "");
+  let normalized = value.replace(/[^0-9]/g, "");
+  if (normalized.length === 10) normalized = `91${normalized}`;
 
   if (normalized.length < 8 || normalized.length > 15) {
     throw new Error("Invalid WhatsApp recipient phone number.");
