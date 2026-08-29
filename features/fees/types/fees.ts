@@ -46,6 +46,7 @@ export interface FeePayment {
 
 export interface FeeMessage {
   id: string;
+  studentId: string;
   studentName: string;
   messageType: string;
   recipientType: string;
