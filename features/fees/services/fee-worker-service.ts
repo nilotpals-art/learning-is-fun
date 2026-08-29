@@ -17,6 +17,15 @@ const isoDate = (value: Date) => value.toISOString().slice(0, 10);
 const displayDate = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(`${value}T00:00:00+05:30`)).toUpperCase();
 const displayMonth = (value: string) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(`${value}T00:00:00+05:30`)).toUpperCase();
 
+type OutboxMessage = {
+  id: string;
+  message_type: string;
+  recipient_phone: string | null;
+  template_name: string | null;
+  template_parameters: unknown;
+  attempt_count: number;
+};
+
 function templateNameFor(messageType: string, storedName: string | null): string {
   if (messageType === "fee_reminder") return WHATSAPP_TEMPLATES.feesPaymentReminder.name;
   if (messageType === "payment_confirmation") return WHATSAPP_TEMPLATES.feesPaymentConfirmation.name;
@@ -35,6 +44,51 @@ function templateParameterOrder(messageType: string, values: Record<string, unkn
     return [values.student_name, values.receipt_no, values.amount, values.fee_month, values.fee_head, values.payment_date, values.payment_mode] as Array<string | number | null | undefined>;
   }
   return Object.values(values).map((value) => value == null || typeof value === "string" || typeof value === "number" ? value as string | number | null | undefined : JSON.stringify(value));
+}
+
+async function deliverMessage(supabase: ReturnType<typeof serviceClient>, message: OutboxMessage): Promise<"sent" | "failed" | "skipped"> {
+  const templateName = templateNameFor(message.message_type, message.template_name);
+  if (!message.recipient_phone || !templateName) return "skipped";
+
+  const claimed = await supabase
+    .from("fee_message_outbox")
+    .update({ status: "processing", updated_at: new Date().toISOString() })
+    .eq("id", message.id)
+    .in("status", ["queued", "failed"])
+    .select("id")
+    .maybeSingle();
+  if (claimed.error || !claimed.data) return "skipped";
+
+  const values = (message.template_parameters ?? {}) as Record<string, unknown>;
+  const result = await sendWhatsAppTemplate({
+    to: message.recipient_phone,
+    templateName,
+    parameters: templateParameterOrder(message.message_type, values),
+  });
+
+  if (result.status === "sent") {
+    const { error: updateError } = await supabase.from("fee_message_outbox").update({
+      status: "sent",
+      attempt_count: Number(message.attempt_count) + 1,
+      provider_message_id: result.providerMessageId ?? null,
+      last_error_code: null,
+      last_error_message: null,
+      sent_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", message.id);
+    if (updateError) throw updateError;
+    return "sent";
+  }
+
+  const { error: updateError } = await supabase.from("fee_message_outbox").update({
+    status: "failed",
+    attempt_count: Number(message.attempt_count) + 1,
+    last_error_code: result.errorCode ?? result.status,
+    last_error_message: result.errorMessage ?? "WhatsApp delivery is not configured.",
+    updated_at: new Date().toISOString(),
+  }).eq("id", message.id);
+  if (updateError) throw updateError;
+  return "failed";
 }
 
 async function outstandingForDue(supabase: ReturnType<typeof serviceClient>, instituteId: string, dueId: string, netAmount: number): Promise<number> {
@@ -113,25 +167,38 @@ export async function queueScheduledPendingFeeReminders(asOf = new Date()): Prom
   return queued;
 }
 
+export async function deliverPaymentConfirmationImmediately(paymentId: string, instituteId: string): Promise<{ sent: number; failed: number; skipped: number }> {
+  const supabase = serviceClient();
+  const { data: messages, error } = await supabase
+    .from("fee_message_outbox")
+    .select("id,message_type,recipient_phone,template_name,template_parameters,attempt_count")
+    .eq("institute_id", instituteId)
+    .eq("fee_payment_id", paymentId)
+    .eq("message_type", "payment_confirmation")
+    .in("status", ["queued", "failed"])
+    .lt("attempt_count", 3);
+  if (error) throw error;
+
+  let sent = 0, failed = 0, skipped = 0;
+  for (const message of (messages ?? []) as OutboxMessage[]) {
+    const status = await deliverMessage(supabase, message);
+    if (status === "sent") sent += 1;
+    else if (status === "failed") failed += 1;
+    else skipped += 1;
+  }
+  return { sent, failed, skipped };
+}
+
 export async function deliverFeeWhatsAppOutbox(limit = 50): Promise<{ sent: number; failed: number; skipped: number }> {
   const supabase = serviceClient();
   const { data: messages, error } = await supabase.from("fee_message_outbox").select("id,message_type,recipient_phone,template_name,template_parameters,attempt_count").in("status", ["queued", "failed"]).lte("scheduled_for", new Date().toISOString()).lt("attempt_count", 3).order("scheduled_for").limit(limit);
   if (error) throw error;
   let sent = 0, failed = 0, skipped = 0;
-  for (const message of messages ?? []) {
-    const templateName = templateNameFor(message.message_type, message.template_name);
-    if (!message.recipient_phone || !templateName) { skipped += 1; continue; }
-    const claimed = await supabase.from("fee_message_outbox").update({ status: "processing", updated_at: new Date().toISOString() }).eq("id", message.id).in("status", ["queued", "failed"]).select("id").maybeSingle();
-    if (claimed.error || !claimed.data) { skipped += 1; continue; }
-    const values = (message.template_parameters ?? {}) as Record<string, unknown>;
-    const result = await sendWhatsAppTemplate({ to: message.recipient_phone, templateName, parameters: templateParameterOrder(message.message_type, values) });
-    if (result.status === "sent") {
-      const { error: updateError } = await supabase.from("fee_message_outbox").update({ status: "sent", attempt_count: Number(message.attempt_count) + 1, provider_message_id: result.providerMessageId ?? null, last_error_code: null, last_error_message: null, sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", message.id);
-      if (updateError) throw updateError; sent += 1;
-    } else {
-      const { error: updateError } = await supabase.from("fee_message_outbox").update({ status: "failed", attempt_count: Number(message.attempt_count) + 1, last_error_code: result.errorCode ?? result.status, last_error_message: result.errorMessage ?? "WhatsApp delivery is not configured.", updated_at: new Date().toISOString() }).eq("id", message.id);
-      if (updateError) throw updateError; failed += 1;
-    }
+  for (const message of (messages ?? []) as OutboxMessage[]) {
+    const status = await deliverMessage(supabase, message);
+    if (status === "sent") sent += 1;
+    else if (status === "failed") failed += 1;
+    else skipped += 1;
   }
   return { sent, failed, skipped };
 }
