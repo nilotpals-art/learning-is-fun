@@ -13,6 +13,7 @@ export const studentAssignmentSchema = z.object({
   effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid Effective From date."),
   promotionType: z.enum(PROMOTION_TYPES),
   remarks: z.string().trim().max(1000, "Remarks must not exceed 1000 characters.").transform(normalizeUpperText),
+  notifyByWhatsApp: z.boolean().default(true),
 });
 
 export type StudentAssignmentValues = z.infer<typeof studentAssignmentSchema>;
