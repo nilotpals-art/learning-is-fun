@@ -8,12 +8,14 @@ import { findFeeStructure } from "@/features/fees/services/fee-structure-service
 import {
   createEnrollmentInvite,
   deleteEnrollmentInvite,
+  loadEnrollmentInvite,
   provisionEnrollmentPortalIdentities,
   requestEnrollmentOtp,
   submitEnrollment,
   verifyEnrollmentOtp,
   type EnrollmentPurpose,
 } from "@/features/student-enrollment/services/enrollment-service";
+import { sendApprovedWhatsAppTemplate } from "@/features/whatsapp/template-delivery-service";
 import { requireRole } from "@/lib/auth/services/auth-service";
 import { DASHBOARD_ROLES } from "@/lib/navigation";
 
@@ -53,9 +55,15 @@ export async function createEnrollmentLinkAction(input: unknown) {
   const proto = requestHeaders.get("x-forwarded-proto") ?? "https";
   const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
   const origin = configuredOrigin ?? (host ? `${proto}://${host}` : "");
+  const url = `${origin}/enroll/${token}`;
+
+  const whatsapp = await sendApprovedWhatsAppTemplate(parsed.data.parentMobile, "parentEnrollmentLink", [url]);
+  if (whatsapp.status === "failed") {
+    console.error("Enrollment link created but WhatsApp delivery failed", { error: whatsapp.error });
+  }
 
   revalidatePath("/students/enrollment-links");
-  return { status: "success" as const, url: `${origin}/enroll/${token}`, expiresAt };
+  return { status: "success" as const, url, expiresAt, whatsappStatus: whatsapp.status };
 }
 
 export async function deleteEnrollmentLinkAction(inviteIdInput: unknown) {
@@ -149,10 +157,23 @@ export async function submitEnrollmentAction(token: string, input: unknown) {
       });
     }
 
+    let whatsappStatus: "sent" | "not_configured" | "failed" = "not_configured";
+    try {
+      const invite = await loadEnrollmentInvite(token);
+      if (invite?.parentMobile) {
+        const whatsapp = await sendApprovedWhatsAppTemplate(invite.parentMobile, "enrollmentCompleted", [parsed.data.name, result.admission_no]);
+        whatsappStatus = whatsapp.status;
+        if (whatsapp.status === "failed") console.error("Enrollment completed but WhatsApp delivery failed", { studentId: result.student_id, error: whatsapp.error });
+      }
+    } catch (whatsappError) {
+      whatsappStatus = "failed";
+      console.error("Enrollment completed but WhatsApp notification failed", { studentId: result.student_id, error: whatsappError instanceof Error ? whatsappError.message : "unknown" });
+    }
+
     revalidatePath("/students");
     revalidatePath("/students/enrollment-links");
     revalidatePath("/fees/student-fees");
-    return { status: "success" as const, admissionNumber: result.admission_no, enrollmentDate: result.enrollment_date };
+    return { status: "success" as const, admissionNumber: result.admission_no, enrollmentDate: result.enrollment_date, whatsappStatus };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Enrollment could not be submitted.";
     if (message.includes("PARENT_ENROLLMENT_PARENT_CONFLICT")) return { status: "error" as const, message: "These guardian details conflict with an existing Parent record. Please contact Learning Is Fun." };
