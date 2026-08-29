@@ -18,7 +18,8 @@ export function isWhatsAppConfigured(): boolean {
 }
 
 function phone(value: string): string {
-  return value.replace(/[^0-9]/g, "");
+  const digits = value.replace(/[^0-9]/g, "");
+  return digits.length === 10 ? `91${digits}` : digits;
 }
 
 export async function sendWhatsAppTemplate(input: WhatsAppTemplateInput): Promise<WhatsAppDeliveryResult> {
