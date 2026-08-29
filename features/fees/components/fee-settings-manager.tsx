@@ -10,16 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Toaster, toast } from "@/components/ui/toast";
 import { updateFeeSettings, uploadFeeQrCode } from "@/features/fees/actions/fee-actions";
 import type { FeeSettings } from "@/features/fees/types/fees";
+import { WHATSAPP_TEMPLATES } from "@/features/whatsapp/templates";
 
 const select = "h-10 w-full rounded-2xl border border-input bg-background px-3 text-sm";
-const textarea = "min-h-36 w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm";
+const REMINDER_FORMAT = `Dear Parents,\n\nThis is a reminder that ₹{outstanding_amount} is due towards fees for {student_name}.\n\nFee Month: {fee_month}\nFee Head: {fee_head}\nDue Date: {due_date}\n\nPlease ignore this message if payment has already been made.\n\nThank you.\nLearning Is Fun`;
+const CONFIRMATION_FORMAT = `Dear Parents,\n\nWe have received ₹{amount} towards fees for {student_name}.\n\nFee Month: {fee_month}\nFee Head: {fee_head}\nReceipt No: {receipt_no}\nPayment Date: {payment_date}\nPayment Mode: {payment_mode}\n\nThank you.\nLearning Is Fun`;
 
 function notify(result: { status: string; message: string }) {
-  toast.add({
-    title: result.status === "success" ? "Success" : "Unable to continue",
-    description: result.message,
-    type: result.status === "success" ? "success" : "error",
-  });
+  toast.add({ title: result.status === "success" ? "Success" : "Unable to continue", description: result.message, type: result.status === "success" ? "success" : "error" });
 }
 
 function Preview({ format, values }: { format: string; values: Record<string, string> }) {
@@ -33,7 +31,15 @@ export function FeeSettingsManager({ settings }: { settings: FeeSettings }) {
   const [uploading, startUpload] = useTransition();
 
   function save() {
-    start(async () => notify(await updateFeeSettings(value)));
+    const aligned: FeeSettings = {
+      ...value,
+      reminderTemplateName: WHATSAPP_TEMPLATES.feesPaymentReminder.name,
+      confirmationTemplateName: WHATSAPP_TEMPLATES.feesPaymentConfirmation.name,
+      reminderMessageFormat: REMINDER_FORMAT,
+      confirmationMessageFormat: CONFIRMATION_FORMAT,
+    };
+    setValue(aligned);
+    start(async () => notify(await updateFeeSettings(aligned)));
   }
 
   function upload(file: File | null) {
@@ -48,7 +54,7 @@ export function FeeSettingsManager({ settings }: { settings: FeeSettings }) {
   }
 
   return <div className="space-y-6">
-    <PageHeader title="Fee Settings" description="Admin-editable payment instructions and WhatsApp message formats." />
+    <PageHeader title="Fee Settings" description="Payment instructions and approved Meta WhatsApp templates." />
 
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2"><Banknote className="size-5" />Payment Details</CardTitle></CardHeader>
@@ -61,7 +67,6 @@ export function FeeSettingsManager({ settings }: { settings: FeeSettings }) {
           <label className="grid gap-2 text-sm">IFSC<Input value={value.bankIfsc ?? ""} onChange={(e) => setValue({ ...value, bankIfsc: e.target.value || null })} /></label>
           <label className="grid gap-2 text-sm">Branch<Input value={value.bankBranch ?? ""} onChange={(e) => setValue({ ...value, bankBranch: e.target.value || null })} /></label>
         </div>
-
         <div className="grid gap-4 md:grid-cols-[220px_1fr] md:items-center">
           <div className="flex min-h-48 items-center justify-center rounded-2xl border bg-muted/30 p-4">
             {value.qrCodeUrl ? <img src={value.qrCodeUrl} alt="Fee payment QR" className="max-h-44 max-w-44 object-contain" /> : <div className="text-center text-sm text-muted-foreground"><QrCode className="mx-auto mb-2 size-10" />No QR uploaded</div>}
@@ -79,36 +84,30 @@ export function FeeSettingsManager({ settings }: { settings: FeeSettings }) {
     </Card>
 
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquareText className="size-5" />WhatsApp Pending Dues Message</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquareText className="size-5" />WhatsApp Pending Fee Reminder</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <label className="flex gap-3 text-sm"><input type="checkbox" checked={value.whatsappFeeRemindersEnabled} onChange={(e) => setValue({ ...value, whatsappFeeRemindersEnabled: e.target.checked })} />Enable pending-dues reminders</label>
+        <label className="flex gap-3 text-sm"><input type="checkbox" checked={value.whatsappFeeRemindersEnabled} onChange={(e) => setValue({ ...value, whatsappFeeRemindersEnabled: e.target.checked })} />Enable pending-fee reminders</label>
         <div className="grid gap-4 md:grid-cols-3">
           <label className="grid gap-2 text-sm">Send after due date (days)<Input type="number" min="0" max="365" value={value.reminderAfterDueDays} onChange={(e) => setValue({ ...value, reminderAfterDueDays: Number(e.target.value) })} /></label>
           <label className="grid gap-2 text-sm">Repeat every days<Input type="number" min="1" value={value.repeatEveryDays ?? ""} onChange={(e) => setValue({ ...value, repeatEveryDays: e.target.value ? Number(e.target.value) : null })} /></label>
           <label className="grid gap-2 text-sm">Maximum reminders<Input type="number" min="1" value={value.maxRemindersPerDue ?? ""} onChange={(e) => setValue({ ...value, maxRemindersPerDue: e.target.value ? Number(e.target.value) : null })} /></label>
         </div>
-        <label className="grid gap-2 text-sm">Pending Dues Message Format<textarea className={textarea} value={value.reminderMessageFormat} onChange={(e) => setValue({ ...value, reminderMessageFormat: e.target.value })} /></label>
-        <p className="text-xs text-muted-foreground">Placeholders: {`{student_name} {fee_head} {due_date} {outstanding_amount} {institute_name}`}</p>
-        <Preview format={value.reminderMessageFormat} values={{ student_name: "Aarav Sharma", fee_head: "Tuition Fee", due_date: "15 Aug 2026", outstanding_amount: "₹2,500", institute_name: "Learning Is Fun" }} />
-        <label className="grid gap-2 text-sm">Approved Meta Template Name<Input value={value.reminderTemplateName} onChange={(e) => setValue({ ...value, reminderTemplateName: e.target.value })} /></label>
+        <p className="text-xs text-muted-foreground">Meta template: <strong>{WHATSAPP_TEMPLATES.feesPaymentReminder.name}</strong> · Variables: Amount Due → Student Name → Fee Month → Fee Head → Due Date</p>
+        <Preview format={REMINDER_FORMAT} values={{ outstanding_amount: "2500", student_name: "RAHUL SEN", fee_month: "AUGUST 2026", fee_head: "MONTHLY TUITION FEE", due_date: "10 AUGUST 2026" }} />
       </CardContent>
     </Card>
 
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquareText className="size-5" />WhatsApp Payment Receipt Message</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquareText className="size-5" />WhatsApp Fee Payment Confirmation</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <label className="flex gap-3 text-sm"><input type="checkbox" checked={value.whatsappPaymentConfirmationsEnabled} onChange={(e) => setValue({ ...value, whatsappPaymentConfirmationsEnabled: e.target.checked })} />Enable payment receipt confirmations</label>
-        <label className="grid gap-2 text-sm">Receipt Message Format<textarea className={textarea} value={value.confirmationMessageFormat} onChange={(e) => setValue({ ...value, confirmationMessageFormat: e.target.value })} /></label>
-        <p className="text-xs text-muted-foreground">Placeholders: {`{student_name} {receipt_no} {payment_date} {amount} {payment_mode} {reference_no} {remaining_outstanding} {institute_name}`}</p>
-        <Preview format={value.confirmationMessageFormat} values={{ student_name: "Aarav Sharma", receipt_no: "LIF/2026-27/000123", payment_date: "20 Aug 2026", amount: "₹2,500", payment_mode: "UPI", reference_no: "UPI12345", remaining_outstanding: "₹0", institute_name: "Learning Is Fun" }} />
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2 text-sm">Approved Meta Template Name<Input value={value.confirmationTemplateName} onChange={(e) => setValue({ ...value, confirmationTemplateName: e.target.value })} /></label>
-          <label className="grid gap-2 text-sm">Send To<select className={select} value={value.recipientPreference} onChange={(e) => setValue({ ...value, recipientPreference: e.target.value as FeeSettings["recipientPreference"] })}><option value="parent">Parent</option><option value="student">Student</option><option value="both">Parent & Student</option></select></label>
-        </div>
+        <label className="flex gap-3 text-sm"><input type="checkbox" checked={value.whatsappPaymentConfirmationsEnabled} onChange={(e) => setValue({ ...value, whatsappPaymentConfirmationsEnabled: e.target.checked })} />Enable fee payment confirmations</label>
+        <p className="text-xs text-muted-foreground">Meta template: <strong>{WHATSAPP_TEMPLATES.feesPaymentConfirmation.name}</strong> · Variables: Amount → Student Name → Fee Month → Fee Head → Receipt No → Payment Date → Payment Mode</p>
+        <Preview format={CONFIRMATION_FORMAT} values={{ amount: "2500", student_name: "RAHUL SEN", fee_month: "AUGUST 2026", fee_head: "MONTHLY TUITION FEE", receipt_no: "LIF-R-00125", payment_date: "28 AUGUST 2026", payment_mode: "UPI" }} />
+        <label className="grid gap-2 text-sm">Send To<select className={select} value={value.recipientPreference} onChange={(e) => setValue({ ...value, recipientPreference: e.target.value as FeeSettings["recipientPreference"] })}><option value="parent">Parent</option><option value="student">Student</option><option value="both">Parent & Student</option></select></label>
       </CardContent>
     </Card>
 
-    <Card><CardContent className="flex items-center justify-between gap-4 pt-6"><p className="text-sm text-muted-foreground">Monthly due day: {value.defaultMonthlyDueDay}. Payment details and message formats are visible/editable only to Admin.</p><Button disabled={pending} onClick={save}>{pending ? "Saving…" : "Save Fee Settings"}</Button></CardContent></Card>
+    <Card><CardContent className="flex items-center justify-between gap-4 pt-6"><p className="text-sm text-muted-foreground">Approved Meta template names and variable order are locked to prevent ERP/Meta mismatch.</p><Button disabled={pending} onClick={save}>{pending ? "Saving…" : "Save Fee Settings"}</Button></CardContent></Card>
     <Toaster />
   </div>;
 }
