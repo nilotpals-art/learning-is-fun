@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { PortalInactivityLogout } from "@/features/auth/components/portal-inactivity-logout";
+import { SessionHeartbeat } from "@/features/auth/components/session-heartbeat";
 import { UrgentNoticePopup } from "@/features/learning-planner/components/urgent-notice-popup";
 import { getHolidaySettings } from "@/features/learning-planner/services/holiday-service";
 import { getPortalHolidayTheme } from "@/features/learning-planner/services/portal-holiday-theme-service";
@@ -28,6 +29,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   const holidayTheme = isPortalUser && holidaySettings?.portalThemeEnabled ? await getPortalHolidayTheme(profile) : null;
 
   return <>
+    <SessionHeartbeat />
     {isPortalUser ? <PortalInactivityLogout /> : null}
     {isPortalUser && urgentNotices.length > 0 ? <UrgentNoticePopup notices={urgentNotices} /> : null}
     <AppShell instituteName={instituteName} navigationItems={navigationItems} holidayTheme={holidayTheme} user={{ name: profile.name, email: profile.email, role: profile.role ?? "Role unavailable" }}>
